@@ -1,4 +1,4 @@
-﻿// FinSys/Services/SupabaseService.cs
+// FinSys/Services/SupabaseService.cs
 
 using FinSys.Controllers;
 using FinSys.Models;
@@ -226,6 +226,31 @@ namespace FinSys.Services
 
             var users = JsonSerializer.Deserialize<List<User>>(json);
             return users?.FirstOrDefault();
+        }
+        // FinSys/Services/SupabaseService.cs
+
+public async Task<Transaction?> GetTransactionById(string id)
+        {
+            // The select query ensures you get the full transaction data along with joined user details
+            var selectQuery = "*,UserDetails:users(name,surname,email)";
+
+            // Fetch by ID, which is the primary key
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{id}&select={selectQuery}");
+            var json = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine($"[GetTransactionById] Status: {response.StatusCode}, Body: {json}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Log or handle the failed request
+                return null;
+            }
+
+            // Supabase returns a list even for a single-item query
+            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+
+            // Return the first, or null if the list is empty
+            return transactions?.FirstOrDefault();
         }
 
         public async Task<User> AddUser(User user)
