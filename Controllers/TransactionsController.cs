@@ -1,4 +1,4 @@
-﻿// FinSys/Controllers/TransactionsController.cs
+// FinSys/Controllers/TransactionsController.cs
 
 using FinSys.Models;
 using FinSys.Services;
@@ -186,6 +186,45 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Failed to delete transaction (Admin access).", Details = ex.Message });
             }
         }
+        // FinSys/Controllers/TransactionsController.cs
+
+// ------------------------------------------------------------------
+// SINGLE ITEM GET
+// ------------------------------------------------------------------
+[HttpGet("{id}")]
+        public async Task<IActionResult> GetTransactionById(string id)
+        {
+            if (!Guid.TryParse(id, out Guid transactionIdGuid))
+            {
+                return BadRequest(new { Message = "Invalid transaction ID format." });
+            }
+
+            try
+            {
+                // 🛑 NOTE: You'll need to implement this method in your SupabaseService
+                var transaction = await _supabase.GetTransactionById(id);
+
+                if (transaction == null)
+                {
+                    return NotFound(new { Message = $"Transaction with ID {id} not found." });
+                }
+
+                // 🔑 PROTECTION: Ensure the requested transaction belongs to the user, or the user is Admin
+                var tokenUserId = GetUserIdFromToken();
+                if (tokenUserId != transaction.UserId && !User.IsInRole("Admin"))
+                {
+                    return Forbid("Access to this transaction is forbidden.");
+                }
+
+                return Ok(transaction);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Failed to fetch transaction.", Details = ex.Message });
+            }
+        }
+        // ------------------------------------------------------------------
+        // ...
 
         // Deprecated GET: /api/transactions
         [HttpGet]
