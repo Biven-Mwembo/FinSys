@@ -144,37 +144,25 @@ namespace FinSys.Controllers
       // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
 [HttpPut("{id:guid}")]
 [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
-public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] TransactionUpdateRequest request)
-{
-    if (request == null)
-        return BadRequest("Invalid transaction data.");
+   public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] TransactionUpdateRequest request)
+   {
+       if (request == null)
+           return BadRequest("Invalid transaction data.");
 
-    try
-    {
-        var client = _supabase.GetClient();
+       try
+       {
+           var updated = await _supabase.UpdateTransaction(id.ToString(), request);
 
-        // 🔑 Perform update in Supabase
-        var response = await client
-            .From<Transaction>()
-            .Where(t => t.Id == id)
-            .Set(t => t.Date, request.Date)
-            .Set(t => t.Amount, request.Amount)
-            .Set(t => t.Currency, request.Currency)
-            .Set(t => t.Channel, request.Channel)
-            .Set(t => t.Motif, request.Motif)
-            .Set(t => t.FileUrl, request.FileUrl)
-            .Update();
+           if (!updated)
+               return NotFound($"Transaction with ID {id} not found.");
 
-        if (response.Models.Count == 0)
-            return NotFound($"Transaction with ID {id} not found.");
-
-        return Ok(response.Models.First());
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, $"Error updating transaction: {ex.Message}");
-    }
-}
+           return Ok(new { Message = $"Transaction {id} updated successfully." });
+       }
+       catch (Exception ex)
+       {
+           return StatusCode(500, new { Message = "Error updating transaction.", Details = ex.Message });
+       }
+   }
 
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
