@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FinSys")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f95f56e2415c5edeba1bb9456d7cb07b232c4f6b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c6f42d5b6e8bf6e377a4f479b164975e0b2a750a")]
 [assembly: System.Reflection.AssemblyProductAttribute("FinSys")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FinSys")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
