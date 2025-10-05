@@ -7,7 +7,7 @@ obj/
 *.suo
 *.log
 
-# VS Code settings
+# VS Code
 .vscode/
 
 # Visual Studio files
@@ -17,12 +17,16 @@ obj/
 out/
 publish/
 
-# Secret or environment files
-appsettings*.json
+# Include default appsettings for Docker build
+!appsettings.json
+!appsettings.Development.json
 
-# Docker artifacts (if any temporary)
+# Ignore secrets
+appsettings.*.Secret.json
+.env
+
+# Docker artifacts
 *.dockerfile
-*.env
 
 # Misc
 *.DS_Store
