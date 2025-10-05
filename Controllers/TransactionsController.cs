@@ -141,35 +141,41 @@ namespace FinSys.Controllers
 
 
         // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
-        // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
-                    public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
-     {
-      var idString = id.ToString();
-         if (!ModelState.IsValid) return BadRequest(ModelState);
+      // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
+[HttpPut("{id:guid}")]
+[Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] TransactionUpdateRequest request)
+{
+    if (request == null)
+        return BadRequest("Invalid transaction data.");
 
-         try
-         {
-             var updated = await _supabase.UpdateTransaction(id, request);
+    try
+    {
+        var client = _supabase.GetClient();
 
-             if (!updated)
-             {
-                 // Check if it's specifically a 404 from Supabase (you could expose status from service)
-                 return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
-             }
+        // 🔑 Perform update in Supabase
+        var response = await client
+            .From<Transaction>()
+            .Where(t => t.Id == id)
+            .Set(t => t.Date, request.Date)
+            .Set(t => t.Amount, request.Amount)
+            .Set(t => t.Currency, request.Currency)
+            .Set(t => t.Channel, request.Channel)
+            .Set(t => t.Motif, request.Motif)
+            .Set(t => t.FileUrl, request.FileUrl)
+            .Update();
 
-             return NoContent(); // 204
-         }
-         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-         {
-             return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
-         }
-         catch (Exception ex)
-         {
-             return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
-         }
-     }
+        if (response.Models.Count == 0)
+            return NotFound($"Transaction with ID {id} not found.");
+
+        return Ok(response.Models.First());
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Error updating transaction: {ex.Message}");
+    }
+}
+
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
