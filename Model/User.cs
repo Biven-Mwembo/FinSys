@@ -134,5 +134,7 @@ namespace FinSys.Models
         public string Currency { get; set; } = string.Empty;
         public string Channel { get; set; } = string.Empty;
         public string Motif { get; set; } = string.Empty;
+        // ✅ Add FileUrl so Admin can update the file path if needed
+public string? FileUrl { get; set; }
     }
 }
