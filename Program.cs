@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
               {
                   // 🚨 IMPORTANT: Replace http://localhost:5173
                   // with the exact URL of your React frontend app.
-                  policy.WithOrigins("http://localhost:5173")
+                  policy.WithOrigins("https://68e26cbfc0086a5347bca224--rouah.netlify.app/")
                       .AllowAnyHeader()
                       .AllowAnyMethod();
               });
