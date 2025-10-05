@@ -1,0 +1,28 @@
+# Build Folders
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.log
+
+# VS Code settings
+.vscode/
+
+# Visual Studio files
+*.vs/
+
+# Publish output
+out/
+publish/
+
+# Secret or environment files
+appsettings*.json
+
+# Docker artifacts (if any temporary)
+*.dockerfile
+*.env
+
+# Misc
+*.DS_Store
