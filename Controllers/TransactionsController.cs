@@ -141,11 +141,12 @@ namespace FinSys.Controllers
 
 
         // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPut("{id}")]
+        [HttpPut("{id:guid}")]
         [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
                     public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
      {
+      var idString = id.ToString();
          if (!ModelState.IsValid) return BadRequest(ModelState);
 
          try
