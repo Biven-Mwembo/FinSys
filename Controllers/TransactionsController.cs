@@ -1,12 +1,10 @@
-// FinSys/Controllers/TransactionsController.cs
-
 using FinSys.Models;
 using FinSys.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.ComponentModel.DataAnnotations; 
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -24,10 +22,14 @@ namespace FinSys.Controllers
             _supabase = supabase;
         }
 
-        // Helper to get the user ID from the JWT and convert it to Guid.
+        // Helper to get the user ID from the JWT
+        private string GetUserIdStringFromToken() =>
+            User.FindFirstValue("id") ?? throw new UnauthorizedAccessException("User ID claim not found.");
+
+        // Helper to get the user ID (as Guid) from the JWT
         private Guid GetUserIdFromToken()
         {
-            var userIdString = User.FindFirstValue("id") ?? throw new UnauthorizedAccessException("User ID claim not found.");
+            var userIdString = GetUserIdStringFromToken();
 
             if (Guid.TryParse(userIdString, out var userIdGuid))
             {
@@ -35,6 +37,19 @@ namespace FinSys.Controllers
             }
 
             throw new InvalidOperationException("User ID claim is not a valid GUID.");
+        }
+
+        // 🔑 NEW HELPER: Get the raw JWT from the request Authorization header.
+        private string GetUserJwtFromToken()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            {
+                // This shouldn't happen under [Authorize], but it's a good fail-safe.
+                throw new UnauthorizedAccessException("Authorization token is missing or malformed.");
+            }
+            // Strip "Bearer " prefix
+            return authHeader.Substring("Bearer ".Length).Trim();
         }
 
         // GET: /api/transactions/user/{userId}
@@ -54,9 +69,12 @@ namespace FinSys.Controllers
                 return Forbid("Access to other users' transactions is forbidden.");
             }
 
+            // 🐛 FIX 1: Retrieve the JWT and pass it to the service method
+            string userJwt = GetUserJwtFromToken();
+
             try
             {
-                var transactions = await _supabase.GetTransactionsByUser(userId);
+                var transactions = await _supabase.GetTransactionsByUser(userId, userJwt);
                 return Ok(transactions);
             }
             catch (Exception ex)
@@ -78,6 +96,8 @@ namespace FinSys.Controllers
             }
 
             var secureUserId = GetUserIdFromToken(); // Returns Guid
+            // You should also get the JWT here to pass to AddTransaction if RLS is enforced on insert
+            // string userJwt = GetUserJwtFromToken(); 
 
             try
             {
@@ -87,7 +107,6 @@ namespace FinSys.Controllers
                     fileUrl = await _supabase.SaveFile(request.File);
                 }
 
-                // 🔑 MODEL FIX: Using FileUrl and UserId (Guid) as defined in the updated Transaction model
                 var transaction = new Transaction
                 {
                     Date = request.Date,
@@ -95,15 +114,16 @@ namespace FinSys.Controllers
                     Currency = request.Currency,
                     Channel = request.Channel,
                     Motif = request.Motif,
-                    FileUrl = fileUrl, // ✅ NOW USES FileUrl
-                    UserId = secureUserId // ✅ NOW USES UserId (Guid)
+                    FileUrl = fileUrl,
+                    UserId = secureUserId
                 };
 
+                // NOTE: AddTransaction needs a JWT argument if you update the SupabaseService method signature
                 var createdTransaction = await _supabase.AddTransaction(transaction);
 
                 return CreatedAtAction(
                     nameof(GetTransactionsByUser),
-                    new { userId = createdTransaction.UserId }, // UserId is Guid, correctly used here
+                    new { userId = createdTransaction.UserId },
                     createdTransaction
                 );
             }
@@ -119,11 +139,12 @@ namespace FinSys.Controllers
 
         // 🔑 ADMIN READ: GET: /api/transactions/all
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllTransactionsForAdmin()
         {
             try
             {
+                // This call uses the internal service role key and doesn't need a JWT
                 var transactions = await _supabase.GetAllTransactionsWithUsers();
 
                 if (transactions == null)
@@ -141,36 +162,37 @@ namespace FinSys.Controllers
 
 
         // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-      // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-[HttpPut("{id:guid}")]
-[Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
-   public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] TransactionUpdateRequest request)
-   {
-       if (request == null)
-           return BadRequest("Invalid transaction data.");
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateTransaction(Guid id, [FromBody] TransactionUpdateRequest request)
+        {
+            if (request == null)
+                return BadRequest("Invalid transaction data.");
 
-       try
-       {
-           var updated = await _supabase.UpdateTransaction(id.ToString(), request);
+            try
+            {
+                // UpdateTransaction needs a JWT argument if you update the SupabaseService method signature
+                var updated = await _supabase.UpdateTransaction(id.ToString(), request);
 
-           if (!updated)
-               return NotFound($"Transaction with ID {id} not found.");
+                if (!updated)
+                    return NotFound($"Transaction with ID {id} not found.");
 
-           return Ok(new { Message = $"Transaction {id} updated successfully." });
-       }
-       catch (Exception ex)
-       {
-           return StatusCode(500, new { Message = "Error updating transaction.", Details = ex.Message });
-       }
-   }
+                return Ok(new { Message = $"Transaction {id} updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error updating transaction.", Details = ex.Message });
+            }
+        }
 
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTransaction(string id)
         {
             try
             {
+                // DeleteTransaction needs a JWT argument if you update the SupabaseService method signature
                 var deleted = await _supabase.DeleteTransaction(id);
 
                 if (!deleted)
@@ -185,12 +207,11 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Failed to delete transaction (Admin access).", Details = ex.Message });
             }
         }
-        // FinSys/Controllers/TransactionsController.cs
 
-// ------------------------------------------------------------------
-// SINGLE ITEM GET
-// ------------------------------------------------------------------
-[HttpGet("{id}")]
+        // ------------------------------------------------------------------
+        // SINGLE ITEM GET
+        // ------------------------------------------------------------------
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetTransactionById(string id)
         {
             if (!Guid.TryParse(id, out Guid transactionIdGuid))
@@ -198,9 +219,14 @@ namespace FinSys.Controllers
                 return BadRequest(new { Message = "Invalid transaction ID format." });
             }
 
+            // You should get the JWT here to pass to GetTransactionById
+            // If the SupabaseService method requires it.
+            // string userJwt = GetUserJwtFromToken();
+
             try
             {
-                // 🛑 NOTE: You'll need to implement this method in your SupabaseService
+                // 🛑 NOTE: The current SupabaseService.GetTransactionById uses the Admin key,
+                // but for a secure app, it should use the user's JWT.
                 var transaction = await _supabase.GetTransactionById(id);
 
                 if (transaction == null)
@@ -222,8 +248,6 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Failed to fetch transaction.", Details = ex.Message });
             }
         }
-        // ------------------------------------------------------------------
-        // ...
 
         // Deprecated GET: /api/transactions
         [HttpGet]
