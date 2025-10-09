@@ -343,6 +343,44 @@ namespace FinSys.Services
             return JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
 
         }
+public async Task<List<User>> GetAllUsers()
+{
+    var selectQuery = "*, role";
+
+    var response = await _httpClient.GetAsync($"{_baseUrl}/users?select={selectQuery}");
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[GetAllUsers] Status: {response.StatusCode}, Body: {json}");
+
+    if (!response.IsSuccessStatusCode)
+    {
+        throw new HttpRequestException(
+            $"Failed to fetch all users. Status: {response.StatusCode}, Response: {json}"
+        );
+    }
+
+    var users = JsonSerializer.Deserialize<List<User>>(json);
+    return users ?? new List<User>();
+}
+public async Task<User?> GetUserById(string userId)
+{
+    var selectQuery = "*, role";
+
+    var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.{userId}&select={selectQuery}");
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[GetUserById] Status: {response.StatusCode}, Body: {json}");
+
+    if (!response.IsSuccessStatusCode)
+    {
+        throw new HttpRequestException(
+            $"Failed to fetch user by ID. Status: {response.StatusCode}, Response: {json}"
+        );
+    }
+
+    var users = JsonSerializer.Deserialize<List<User>>(json);
+    return users?.FirstOrDefault();
+}
 
 
 
