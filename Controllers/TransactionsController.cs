@@ -121,7 +121,7 @@ namespace FinSys.Controllers
         // This endpoint is used by the FinancierTransactionsPage to get all data.
         [HttpGet("all")]
         // 🛡️ AUTHORIZE FIX: Allow Admin, Financier, Vice-President, and Pasteur roles
-        [Authorize(Roles = "Admin,Financier,Vice-President,Pasteur")] 
+       [Authorize(Roles = "admin,financier,vice-president,pasteur")] 
         public async Task<IActionResult> GetAllTransactionsForPrivilegedRoles()
         {
             try
