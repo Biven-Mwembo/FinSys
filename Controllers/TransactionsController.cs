@@ -114,16 +114,19 @@ namespace FinSys.Controllers
         }
 
         // ------------------------------------------------------------------
-        // ADMIN METHODS
+        // PRIVILEGED ROLES METHODS (ADMIN/FINANCIER/PASTEUR/VP)
         // ------------------------------------------------------------------
 
-        // 🔑 ADMIN READ: GET: /api/transactions/all
+        // 🔑 PRIVILEGED READ: GET: /api/transactions/all
+        // This endpoint is used by the FinancierTransactionsPage to get all data.
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
-        public async Task<IActionResult> GetAllTransactionsForAdmin()
+        // 🛡️ AUTHORIZE FIX: Allow Admin, Financier, Vice-President, and Pasteur roles
+        [Authorize(Roles = "Admin,Financier,Vice-President,Pasteur")] 
+        public async Task<IActionResult> GetAllTransactionsForPrivilegedRoles()
         {
             try
             {
+                // This method correctly fetches all transactions
                 var transactions = await _supabase.GetAllTransactionsWithUsers();
 
                 if (transactions == null)
@@ -135,7 +138,7 @@ namespace FinSys.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Failed to fetch all transactions (Admin access).", Details = ex.Message });
+                return StatusCode(500, new { Message = "Failed to fetch all transactions (Privileged access).", Details = ex.Message });
             }
         }
 
@@ -144,32 +147,32 @@ namespace FinSys.Controllers
         [HttpPut("{id:guid}")]
         [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
-                    public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
-     {
-      var idString = id.ToString();
-         if (!ModelState.IsValid) return BadRequest(ModelState);
+        public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-         try
-         {
-             var updated = await _supabase.UpdateTransaction(id, request);
+            try
+            {
+                var updated = await _supabase.UpdateTransaction(id, request);
 
-             if (!updated)
-             {
-                 // Check if it's specifically a 404 from Supabase (you could expose status from service)
-                 return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
-             }
+                if (!updated)
+                {
+                    // Check if it's specifically a 404 from Supabase (you could expose status from service)
+                    return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
+                }
 
-             return NoContent(); // 204
-         }
-         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-         {
-             return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
-         }
-         catch (Exception ex)
-         {
-             return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
-         }
-     }
+                return NoContent(); // 204
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
+            }
+        }
+
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
@@ -191,12 +194,11 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Failed to delete transaction (Admin access).", Details = ex.Message });
             }
         }
-        // FinSys/Controllers/TransactionsController.cs
 
-// ------------------------------------------------------------------
-// SINGLE ITEM GET
-// ------------------------------------------------------------------
-[HttpGet("{id}")]
+        // ------------------------------------------------------------------
+        // SINGLE ITEM GET
+        // ------------------------------------------------------------------
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetTransactionById(string id)
         {
             if (!Guid.TryParse(id, out Guid transactionIdGuid))
@@ -206,7 +208,6 @@ namespace FinSys.Controllers
 
             try
             {
-                // 🛑 NOTE: You'll need to implement this method in your SupabaseService
                 var transaction = await _supabase.GetTransactionById(id);
 
                 if (transaction == null)
@@ -228,9 +229,7 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Failed to fetch transaction.", Details = ex.Message });
             }
         }
-        // ------------------------------------------------------------------
-        // ...
-
+        
         // Deprecated GET: /api/transactions
         [HttpGet]
         [AllowAnonymous] // Allow anyone to see this message
@@ -239,5 +238,4 @@ namespace FinSys.Controllers
             return BadRequest(new { Message = "Please use /api/transactions/user/{userId} or /api/transactions/all." });
         }
     }
-    // DTOs moved to FinSys.Models
 }
