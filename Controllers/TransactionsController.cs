@@ -134,6 +134,29 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Transaction creation failed due to a server error.", Details = ex.Message });
             }
         }
+// ------------------------------------------------------------------
+// ADMIN: View all Pending Requests (Sorties awaiting approval)
+// ------------------------------------------------------------------
+[HttpGet("pending")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetPendingTransactions()
+{
+    try
+    {
+        var pendingTransactions = await _supabase.GetPendingTransactions();
+
+        if (pendingTransactions == null || pendingTransactions.Count == 0)
+        {
+            return Ok(new List<object>()); // Return empty list for clean frontend handling
+        }
+
+        return Ok(pendingTransactions);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to fetch pending transactions.", Details = ex.Message });
+    }
+}
 
 
         // ------------------------------------------------------------------
