@@ -76,6 +76,10 @@ namespace FinSys.Models
         [JsonPropertyName("file_url")]
         public string? FileUrl { get; set; }
 
+        // DB Column: status
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = "Pending";
+
         // ----------------------------------------------------------------------
         // Foreign Key ID
         // This maps to the 'user_id' column in the database and is used when POSTing/PATCHing.
