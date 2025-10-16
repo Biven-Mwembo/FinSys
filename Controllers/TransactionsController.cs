@@ -65,6 +65,7 @@ namespace FinSys.Controllers
             }
         }
 
+
         // ------------------------------------------------------------------
         // POST /api/transactions
         // ------------------------------------------------------------------
@@ -81,13 +82,25 @@ namespace FinSys.Controllers
 
             try
             {
+                // 1. Handle File Upload (Unchanged)
                 string? fileUrl = null;
                 if (request.File != null)
                 {
                     fileUrl = await _supabase.SaveFile(request.File);
                 }
 
-                // 🔑 MODEL FIX: Using FileUrl and UserId (Guid) as defined in the updated Transaction model
+                // 2. Determine Transaction Status based on Channel
+                var transactionStatus = "Approved"; // Default to Approved
+                var responseMessage = "Transaction added successfully.";
+                
+                // 🔑 NEW LOGIC: If Channel is "Sorties", set status to Pending
+                if (request.Channel.Equals("Sorties", StringComparison.OrdinalIgnoreCase))
+                {
+                    transactionStatus = "Pending";
+                    responseMessage = "Sortie request sent successfully and is pending Admin approval.";
+                }
+
+                // 3. Create Transaction Object with Status
                 var transaction = new Transaction
                 {
                     Date = request.Date,
@@ -95,15 +108,24 @@ namespace FinSys.Controllers
                     Currency = request.Currency,
                     Channel = request.Channel,
                     Motif = request.Motif,
-                    FileUrl = fileUrl, // ✅ NOW USES FileUrl
-                    UserId = secureUserId // ✅ NOW USES UserId (Guid)
+                    FileUrl = fileUrl,
+                    UserId = secureUserId,
+                    Status = transactionStatus // ✅ NEW: Set the determined status
                 };
 
+                // 4. Add Transaction (will be Pending or Approved)
                 var createdTransaction = await _supabase.AddTransaction(transaction);
+
+                // 5. Return appropriate status/message
+                if (transactionStatus == "Pending")
+                {
+                    // Return 202 Accepted for a request that's pending action
+                    return Accepted(new { Message = responseMessage, Transaction = createdTransaction }); 
+                }
 
                 return CreatedAtAction(
                     nameof(GetTransactionsByUser),
-                    new { userId = createdTransaction.UserId }, // UserId is Guid, correctly used here
+                    new { userId = createdTransaction.UserId },
                     createdTransaction
                 );
             }
@@ -112,6 +134,7 @@ namespace FinSys.Controllers
                 return StatusCode(500, new { Message = "Transaction creation failed due to a server error.", Details = ex.Message });
             }
         }
+
 
         // ------------------------------------------------------------------
         // PRIVILEGED ROLES METHODS (ADMIN/FINANCIER/PASTEUR/VP)
