@@ -196,6 +196,58 @@ namespace FinSys.Controllers
             }
         }
 
+        // ------------------------------------------------------------------
+// ADMIN: Approve or Reject Pending Transactions
+// ------------------------------------------------------------------
+[HttpPut("{id}/approve")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> ApproveTransaction(string id)
+{
+    try
+    {
+        var transaction = await _supabase.GetTransactionById(id);
+        if (transaction == null)
+            return NotFound(new { Message = "Transaction not found." });
+
+        if (transaction.Status == "Approved")
+            return BadRequest(new { Message = "Transaction is already approved." });
+
+        transaction.Status = "Approved";
+        await _supabase.UpdateTransactionStatus(id, "Approved");
+
+        return Ok(new { Message = "Transaction approved successfully." });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
+    }
+}
+
+[HttpPut("{id}/reject")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> RejectTransaction(string id)
+{
+    try
+    {
+        var transaction = await _supabase.GetTransactionById(id);
+        if (transaction == null)
+            return NotFound(new { Message = "Transaction not found." });
+
+        if (transaction.Status == "Rejected")
+            return BadRequest(new { Message = "Transaction is already rejected." });
+
+        transaction.Status = "Rejected";
+        await _supabase.UpdateTransactionStatus(id, "Rejected");
+
+        return Ok(new { Message = "Transaction rejected successfully." });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to reject transaction.", Details = ex.Message });
+    }
+}
+
+
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
