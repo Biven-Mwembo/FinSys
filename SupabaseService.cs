@@ -124,6 +124,47 @@ namespace FinSys.Services
 
         }
 
+        public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
+{
+    var updateData = new Dictionary<string, object?>
+    {
+        ["status"] = newStatus,
+        ["updated_at"] = DateTime.UtcNow
+    };
+
+    var jsonContent = JsonSerializer.Serialize(updateData);
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+    // Supabase PATCH request (update specific record by ID)
+    var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{transactionId}");
+    request.Content = content;
+    request.Headers.Add("Prefer", "return=representation");
+
+    var response = await _httpClient.SendAsync(request);
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
+
+    return response.IsSuccessStatusCode;
+}
+public async Task<List<Transaction>> GetPendingTransactions()
+{
+    var selectQuery = "*,UserDetails:users(name,surname,email)";
+    var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?status=eq.Pending&select={selectQuery}");
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[GetPendingTransactions] Status: {response.StatusCode}, Body: {json}");
+
+    if (!response.IsSuccessStatusCode)
+    {
+        throw new HttpRequestException($"Failed to fetch pending transactions. Status: {response.StatusCode}, Response: {json}");
+    }
+
+    var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+    return transactions ?? new List<Transaction>();
+}
+
+
 
 
         // ------------------------------------------------------------------
