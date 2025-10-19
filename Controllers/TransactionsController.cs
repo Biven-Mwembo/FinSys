@@ -9,6 +9,7 @@ using System;
 using System.ComponentModel.DataAnnotations; 
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Collections.Generic; // Added for List<object>
 
 namespace FinSys.Controllers
 {
@@ -24,24 +25,21 @@ namespace FinSys.Controllers
             _supabase = supabase;
         }
 
-        // Helper to get the user ID from the JWT and convert it to Guid.
-        private Guid GetUserIdFromToken()
+        // Helper to get the user ID from the JWT. Now returns string (e.g., "USER001").
+        private string GetUserIdFromToken()
         {
+            // 🏆 CHANGE: The 'id' claim should now hold the string Primary Key (e.g., "USER001")
             var userIdString = User.FindFirstValue("id") ?? throw new UnauthorizedAccessException("User ID claim not found.");
-
-            if (Guid.TryParse(userIdString, out var userIdGuid))
-            {
-                return userIdGuid;
-            }
-
-            throw new InvalidOperationException("User ID claim is not a valid GUID.");
+            return userIdString;
         }
 
         // GET: /api/transactions/user/{userId}
+        // 🏆 CHANGE: userId is now string
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetTransactionsByUser(string userId)
         {
-            if (!Guid.TryParse(userId, out Guid userIdGuid))
+            // No Guid.TryParse needed, just ensure it's not empty if desired
+            if (string.IsNullOrEmpty(userId))
             {
                 return BadRequest(new { Message = "Invalid user ID format." });
             }
@@ -49,7 +47,7 @@ namespace FinSys.Controllers
             var tokenUserId = GetUserIdFromToken();
 
             // 🔑 PROTECTION: Ensure the requested userId matches the ID in the token
-            if (tokenUserId != userIdGuid && !User.IsInRole("admin"))
+            if (tokenUserId != userId && !User.IsInRole("admin"))
             {
                 return Forbid("Access to other users' transactions is forbidden.");
             }
@@ -78,7 +76,7 @@ namespace FinSys.Controllers
                 return BadRequest(ModelState);
             }
 
-            var secureUserId = GetUserIdFromToken(); // Returns Guid
+            var secureUserId = GetUserIdFromToken(); // Returns string (e.g., "USER001")
 
             try
             {
@@ -109,8 +107,8 @@ namespace FinSys.Controllers
                     Channel = request.Channel,
                     Motif = request.Motif,
                     FileUrl = fileUrl,
-                    UserId = secureUserId,
-                    Status = transactionStatus // ✅ NEW: Set the determined status
+                    UserId = secureUserId, // 🏆 CHANGE: UserId is now string
+                    Status = transactionStatus
                 };
 
                 // 4. Add Transaction (will be Pending or Approved)
@@ -162,6 +160,8 @@ public async Task<IActionResult> GetPendingTransactions()
 // ADMIN: Get ALL user transactions (pending, approved, declined)
 // ------------------------------------------------------------------
 
+// 🏆 CHANGE: Add HttpGet attribute
+[HttpGet("all-admin")] 
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> GetAllTransactions()
 {
@@ -181,7 +181,6 @@ public async Task<IActionResult> GetAllTransactions()
         return StatusCode(500, new { Message = "Failed to fetch all transactions.", Details = ex.Message });
     }
 }
-
 
 
         // ------------------------------------------------------------------
@@ -215,7 +214,8 @@ public async Task<IActionResult> GetAllTransactions()
 
 
         // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPut("{id:guid}")]
+        // 🏆 CHANGE: id type changed from Guid to string
+        [HttpPut("{id}")] 
         [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
         public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
@@ -247,6 +247,7 @@ public async Task<IActionResult> GetAllTransactions()
         // ------------------------------------------------------------------
 // ADMIN: Approve or Reject Pending Transactions
 // ------------------------------------------------------------------
+// 🏆 CHANGE: id type changed from Guid to string
 [HttpPut("{id}/approved")]
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> ApproveTransaction(string id)
@@ -261,7 +262,8 @@ public async Task<IActionResult> ApproveTransaction(string id)
             return BadRequest(new { Message = "Transaction is already approved." });
 
         transaction.Status = "Approved";
-        await _supabase.UpdateTransactionStatus(id, "Approved");
+        // Call the service with the string ID
+        await _supabase.UpdateTransactionStatus(id, "Approved"); 
 
         return Ok(new { Message = "Transaction approved successfully." });
     }
@@ -270,7 +272,7 @@ public async Task<IActionResult> ApproveTransaction(string id)
         return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
     }
 }
-
+// 🏆 CHANGE: id type changed from Guid to string
 [HttpPut("{id}/declined")]
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> RejectTransaction(string id)
@@ -285,6 +287,7 @@ public async Task<IActionResult> RejectTransaction(string id)
             return BadRequest(new { Message = "Transaction is already rejected." });
 
         transaction.Status = "Rejected";
+        // Call the service with the string ID
         await _supabase.UpdateTransactionStatus(id, "Rejected");
 
         return Ok(new { Message = "Transaction rejected successfully." });
@@ -297,6 +300,7 @@ public async Task<IActionResult> RejectTransaction(string id)
 
 
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
+        // 🏆 CHANGE: id type changed from Guid to string
         [HttpDelete("{id}")]
         [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         public async Task<IActionResult> DeleteTransaction(string id)
@@ -321,10 +325,12 @@ public async Task<IActionResult> RejectTransaction(string id)
         // ------------------------------------------------------------------
         // SINGLE ITEM GET
         // ------------------------------------------------------------------
+        // 🏆 CHANGE: id type changed from Guid to string
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTransactionById(string id)
         {
-            if (!Guid.TryParse(id, out Guid transactionIdGuid))
+            // Remove Guid check
+            if (string.IsNullOrWhiteSpace(id))
             {
                 return BadRequest(new { Message = "Invalid transaction ID format." });
             }
