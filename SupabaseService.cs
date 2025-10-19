@@ -82,7 +82,7 @@ namespace FinSys.Services
         }
         public async Task<List<Transaction>> GetPendingTransactions()
         {
-            var selectQuery = "*,User:users(name,surname,email)";
+            var selectQuery = "*,user:users(name,surname,email)";
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?status=eq.Pending&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
@@ -105,7 +105,7 @@ namespace FinSys.Services
         // userId is now string
         public async Task<List<Transaction>> GetTransactionsByUser(string userId)
         {
-            var selectQuery = "*,UserDetails:users(name,surname,email)";
+            var selectQuery = "*,user:users(name,surname,email)";
 
             // user_id is now a string FK, no uuid cast needed
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.{userId}&select={selectQuery}");
@@ -128,7 +128,7 @@ namespace FinSys.Services
 
         public async Task<List<Transaction>> GetAllTransactionsWithUsers()
         {
-            var selectQuery = "*,UserDetails:users(name,surname,email)";
+            var selectQuery = "*,user:users(name,surname,email)";
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
@@ -318,7 +318,7 @@ namespace FinSys.Services
         // id is now string
         public async Task<Transaction?> GetTransactionById(string id)
         {
-            var selectQuery = "*,UserDetails:users(name,surname,email)";
+            var selectQuery = "*,user:users(name,surname,email)";
 
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{id}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
