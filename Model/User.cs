@@ -88,8 +88,8 @@ namespace FinSys.Models
         public string UserId { get; set; } = string.Empty;
 
         [JsonIgnore]
-        [JsonPropertyName("UserDetails")]
-        public JoinedUser? UserDetails { get; set; }
+        [JsonPropertyName("user")]
+        public JoinedUser? User { get; set; }
     }
 
     public class JoinedUser
