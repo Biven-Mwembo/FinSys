@@ -55,7 +55,7 @@ namespace FinSys.Services
 
             return $"/uploads/{fileName}";
         }
-        
+
         // transactionId is now string (e.g., "TR001")
         public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
         {
@@ -262,6 +262,11 @@ namespace FinSys.Services
 
         public async Task<Transaction> AddTransaction(Transaction transaction)
         {
+            // FIX: Set the primary key ID to null so that the database's 
+            // sequential DEFAULT function ('TR' || lpad(nextval...)) is used,
+            // avoiding the "duplicate key value" constraint violation.
+            transaction.Id = null;
+
             var jsonContent = JsonSerializer.Serialize(transaction);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/transactions");
