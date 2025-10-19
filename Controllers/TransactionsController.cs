@@ -138,7 +138,7 @@ namespace FinSys.Controllers
 // ADMIN: View all Pending Requests (Sorties awaiting approval)
 // ------------------------------------------------------------------
 [HttpGet("pending")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "admin")]
 public async Task<IActionResult> GetPendingTransactions()
 {
     try
@@ -161,8 +161,8 @@ public async Task<IActionResult> GetPendingTransactions()
 // ------------------------------------------------------------------
 // ADMIN: Get ALL user transactions (pending, approved, declined)
 // ------------------------------------------------------------------
-[HttpGet("all")]
-[Authorize(Roles = "Admin")]
+
+[Authorize(Roles = "admin")]
 public async Task<IActionResult> GetAllTransactions()
 {
     try
