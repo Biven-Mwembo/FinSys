@@ -1,4 +1,4 @@
-﻿// FinSys/Models/Transaction.cs
+// FinSys/Models/Transaction.cs
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -16,8 +16,9 @@ namespace FinSys.Models
     // ----------------------------------------------------
     public class User
     {
+        // 🏆 CHANGE 1: Primary Key (PK) changed from Guid to string (e.g., "USER001")
         [JsonPropertyName("id")]
-        public Guid Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
@@ -46,9 +47,10 @@ namespace FinSys.Models
 
     public class Transaction
     {
+        // 🏆 CHANGE 2: Primary Key (PK) changed from Guid to string (e.g., "TR001")
         [JsonPropertyName("id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public Guid Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         // DB Column: date
         [Required]
@@ -83,12 +85,12 @@ namespace FinSys.Models
         // ----------------------------------------------------------------------
         // Foreign Key ID
         // This maps to the 'user_id' column in the database and is used when POSTing/PATCHing.
-        // On GET, Supabase returns the raw 'user_id' key, which is handled here.
+        // 🏆 CHANGE 3: Foreign Key (FK) type changed from Guid to string
         [Required]
         [JsonPropertyName("user_id")]
-        public Guid UserId { get; set; }
+        public string UserId { get; set; } = string.Empty;
 
-        [JsonIgnore] // 💥 THIS IS THE FIX 💥
+        [JsonIgnore] 
         [JsonPropertyName("UserDetails")]
         public JoinedUser? UserDetails { get; set; }
 
@@ -138,7 +140,6 @@ namespace FinSys.Models
         public string Currency { get; set; } = string.Empty;
         public string Channel { get; set; } = string.Empty;
         public string Motif { get; set; } = string.Empty;
-        // ✅ Add FileUrl so Admin can update the file path if needed
-public string? FileUrl { get; set; }
+        public string? FileUrl { get; set; }
     }
 }
