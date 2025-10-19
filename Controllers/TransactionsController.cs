@@ -49,7 +49,7 @@ namespace FinSys.Controllers
             var tokenUserId = GetUserIdFromToken();
 
             // 🔑 PROTECTION: Ensure the requested userId matches the ID in the token
-            if (tokenUserId != userIdGuid && !User.IsInRole("Admin"))
+            if (tokenUserId != userIdGuid && !User.IsInRole("admin"))
             {
                 return Forbid("Access to other users' transactions is forbidden.");
             }
@@ -216,7 +216,7 @@ public async Task<IActionResult> GetAllTransactions()
 
         // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
         [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+        [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
         public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
         {
@@ -248,7 +248,7 @@ public async Task<IActionResult> GetAllTransactions()
 // ADMIN: Approve or Reject Pending Transactions
 // ------------------------------------------------------------------
 [HttpPut("{id}/approve")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "admin")]
 public async Task<IActionResult> ApproveTransaction(string id)
 {
     try
@@ -272,7 +272,7 @@ public async Task<IActionResult> ApproveTransaction(string id)
 }
 
 [HttpPut("{id}/reject")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "admin")]
 public async Task<IActionResult> RejectTransaction(string id)
 {
     try
@@ -298,7 +298,7 @@ public async Task<IActionResult> RejectTransaction(string id)
 
         // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+        [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
         public async Task<IActionResult> DeleteTransaction(string id)
         {
             try
