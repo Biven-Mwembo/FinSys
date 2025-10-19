@@ -46,9 +46,11 @@ namespace FinSys.Models
 
     public class Transaction
     {
+        // FIX: Changed default to null and used WhenWritingNull.
+        // This ensures the ID is not sent on POST, forcing the database to use its DEFAULT value.
         [JsonPropertyName("id")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public string Id { get; set; } = string.Empty;
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Id { get; set; } = null;
 
         // DB Column: date
         [Required]
@@ -85,7 +87,7 @@ namespace FinSys.Models
         [JsonPropertyName("user_id")]
         public string UserId { get; set; } = string.Empty;
 
-        [JsonIgnore] 
+        [JsonIgnore]
         [JsonPropertyName("UserDetails")]
         public JoinedUser? UserDetails { get; set; }
     }
