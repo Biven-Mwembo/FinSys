@@ -247,7 +247,7 @@ public async Task<IActionResult> GetAllTransactions()
         // ------------------------------------------------------------------
 // ADMIN: Approve or Reject Pending Transactions
 // ------------------------------------------------------------------
-[HttpPut("{id}/approve")]
+[HttpPut("{id}/approved")]
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> ApproveTransaction(string id)
 {
@@ -271,7 +271,7 @@ public async Task<IActionResult> ApproveTransaction(string id)
     }
 }
 
-[HttpPut("{id}/reject")]
+[HttpPut("{id}/declined")]
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> RejectTransaction(string id)
 {
