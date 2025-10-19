@@ -158,6 +158,31 @@ public async Task<IActionResult> GetPendingTransactions()
     }
 }
 
+// ------------------------------------------------------------------
+// ADMIN: Get ALL user transactions (pending, approved, declined)
+// ------------------------------------------------------------------
+[HttpGet("all")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetAllTransactions()
+{
+    try
+    {
+        var allTransactions = await _supabase.GetAllTransactionsWithUsers();
+
+        if (allTransactions == null || allTransactions.Count == 0)
+        {
+            return Ok(new List<object>()); // Clean empty response
+        }
+
+        return Ok(allTransactions);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to fetch all transactions.", Details = ex.Message });
+    }
+}
+
+
 
         // ------------------------------------------------------------------
         // PRIVILEGED ROLES METHODS (ADMIN/FINANCIER/PASTEUR/VP)
