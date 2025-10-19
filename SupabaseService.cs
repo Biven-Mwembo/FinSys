@@ -34,13 +34,12 @@ namespace FinSys.Services
         }
 
         // ------------------------------------------------------------------
-        // CORE FILE SAVING (Keep as-is)
+        // CORE FILE SAVING
         // ------------------------------------------------------------------
 
         public async Task<string> SaveFile(IFormFile file)
         {
             if (file == null) return string.Empty;
-            // ... (file saving logic remains unchanged) ...
             var folder = Path.Combine(_env.WebRootPath, "uploads");
 
             if (!Directory.Exists(folder))
@@ -57,7 +56,7 @@ namespace FinSys.Services
             return $"/uploads/{fileName}";
         }
         
-        // 🏆 CHANGE: transactionId is now string (e.g., "TR001")
+        // transactionId is now string (e.g., "TR001")
         public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
         {
             var updateData = new Dictionary<string, object?>
@@ -69,7 +68,7 @@ namespace FinSys.Services
             var jsonContent = JsonSerializer.Serialize(updateData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // 🏆 FIX: Removed the 'uuid.' cast and target the new string Primary Key 'id'
+            // Targeting the new string Primary Key 'id'
             var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{transactionId}");
             request.Content = content;
             request.Headers.Add("Prefer", "return=representation");
@@ -103,12 +102,12 @@ namespace FinSys.Services
         // TRANSACTION CRUD METHODS (Updated for string IDs)
         // ------------------------------------------------------------------
 
-        // 🏆 CHANGE: userId is now string
+        // userId is now string
         public async Task<List<Transaction>> GetTransactionsByUser(string userId)
         {
             var selectQuery = "*,UserDetails:users(name,surname,email)";
 
-            // 🏆 FIX: user_id is now a string FK, no uuid cast needed
+            // user_id is now a string FK, no uuid cast needed
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.{userId}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
@@ -148,13 +147,13 @@ namespace FinSys.Services
             return transactions ?? new List<Transaction>();
         }
 
-        // 🏆 CHANGE: id is now string
+        // id is now string
         public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
         {
             var jsonContent = JsonSerializer.Serialize(request);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // 🏆 FIX: Targeting new string PK 'id'
+            // Targeting new string PK 'id'
             var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{id}");
             requestMessage.Content = content;
             requestMessage.Headers.Add("Prefer", "return=representation");
@@ -166,10 +165,10 @@ namespace FinSys.Services
             return response.IsSuccessStatusCode;
         }
 
-        // 🏆 CHANGE: id is now string
+        // id is now string
         public async Task<bool> DeleteTransaction(string id)
         {
-            // 🏆 FIX: Targeting new string PK 'id'
+            // Targeting new string PK 'id'
             var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.{id}");
 
             Console.WriteLine($"[DeleteTransaction] Status: {response.StatusCode}");
@@ -187,7 +186,6 @@ namespace FinSys.Services
 
         public async Task<List<User>> GetUsers()
         {
-            // ... (unchanged) ...
             var selectQuery = "*, role";
             var response = await _httpClient.GetAsync($"{_baseUrl}/users?select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
@@ -204,7 +202,6 @@ namespace FinSys.Services
         }
         public async Task<List<User>> GetAllUsers()
         {
-            // ... (unchanged) ...
             var selectQuery = "*, role";
             var response = await _httpClient.GetAsync($"{_baseUrl}/users?select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
@@ -220,12 +217,12 @@ namespace FinSys.Services
             var users = JsonSerializer.Deserialize<List<User>>(json);
             return users ?? new List<User>();
         }
-        // 🏆 CHANGE: userId is now string
+        // userId is now string
         public async Task<User?> GetUserById(string userId)
         {
             var selectQuery = "*, role";
 
-            // 🏆 FIX: Targeting new string PK 'id'
+            // Targeting new string PK 'id'
             var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.{userId}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
@@ -235,6 +232,27 @@ namespace FinSys.Services
             {
                 throw new HttpRequestException(
                     $"Failed to fetch user by ID. Status: {response.StatusCode}, Response: {json}"
+                );
+            }
+
+            var users = JsonSerializer.Deserialize<List<User>>(json);
+            return users?.FirstOrDefault();
+        }
+
+        public async Task<User?> GetUserByEmail(string email)
+        {
+            var selectQuery = "*, role";
+
+            // Targeting new string PK 'email'
+            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.{email}&select={selectQuery}");
+            var json = await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine($"[GetUserByEmail] Status: {response.StatusCode}, Body: {json}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException(
+                    $"Failed to fetch user by email. Status: {response.StatusCode}, Response: {json}"
                 );
             }
 
@@ -257,11 +275,27 @@ namespace FinSys.Services
             return transactions?[0] ?? transaction;
         }
 
+        public async Task<User> AddUser(User user)
+        {
+            // ID is automatically generated by the database
+            var jsonContent = JsonSerializer.Serialize(user);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/users");
+            request.Content = content;
+            request.Headers.Add("Prefer", "return=representation");
+            var response = await _httpClient.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
+            var users = JsonSerializer.Deserialize<List<User>>(json);
+            return users?[0] ?? user;
+        }
+
+
         // --- AUTHENTICATION METHODS (Updated for string IDs) ---
 
         public async Task<User?> SimpleLoginAsync(string email, string password)
         {
-            // ... (unchanged) ...
             var user = await GetUserByEmail(email);
 
             if (user == null || string.IsNullOrWhiteSpace(user.Password))
@@ -271,96 +305,28 @@ namespace FinSys.Services
 
             if (user.Password == password)
             {
-                return user;
+                return user; // Returns User object with string ID
             }
-
             return null;
         }
 
-        public async Task<User?> GetUserByEmail(string email)
-        {
-            // ... (unchanged) ...
-            var selectQuery = "*, role";
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.{email}&select={selectQuery}");
-
-            var json = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"[GetUserByEmail] Status: {response.StatusCode}, Body: {json}");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException(
-                    $"Failed to fetch user by email. Status: {response.StatusCode}, Response: {json}"
-                );
-            }
-
-            var users = JsonSerializer.Deserialize<List<User>>(json);
-            return users?.FirstOrDefault();
-        }
-        
-        // 🏆 CHANGE: id is now string
+        // id is now string
         public async Task<Transaction?> GetTransactionById(string id)
         {
             var selectQuery = "*,UserDetails:users(name,surname,email)";
 
-            // 🏆 FIX: Targeting new string PK 'id'
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{id}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
-
-            Console.WriteLine($"[GetTransactionById] Status: {response.StatusCode}, Body: {json}");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
-            return transactions?.FirstOrDefault();
-        }
-        
-        public async Task<User> AddUser(User user)
-        {
-            var userToCreate = new Dictionary<string, object?>()
-            {
-                ["name"] = user.Name,
-                ["surname"] = user.Surname,
-                ["dob"] = user.Dob,
-                ["email"] = string.IsNullOrWhiteSpace(user.Email) ? null : user.Email,
-                ["address"] = string.IsNullOrWhiteSpace(user.Address) ? null : user.Address,
-                ["photo"] = string.IsNullOrWhiteSpace(user.PhotoUrl) ? null : user.PhotoUrl,
-                ["password"] = user.Password,
-                ["role"] = user.Role
-            };
-
-            var jsonOptions = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            };
-
-            var jsonContent = JsonSerializer.Serialize(userToCreate, jsonOptions);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/users");
-            request.Content = content;
-            request.Headers.Add("Prefer", "return=representation");
-
-            var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"[AddUser] Status: {response.StatusCode}, Body: {json}");
 
             if (!response.IsSuccessStatusCode)
             {
                 throw new HttpRequestException(
-                    $"Supabase User Add failed ({response.StatusCode}). " +
-                    $"Check for UNIQUE constraint violations (e.g., duplicate email). Response: {json}",
-                    null,
-                    response.StatusCode
+                    $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
                 );
             }
 
-            var users = JsonSerializer.Deserialize<List<User>>(json, jsonOptions);
-            return users?[0] ?? user;
+            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+            return transactions?.FirstOrDefault();
         }
     }
 }
