@@ -44,49 +44,61 @@ namespace FinSys.Models
         public string Role { get; set; } = "user";
     }
 
-    public class Transaction
+    [Table("transactions")]
+    public class Transaction : BaseModel
     {
-        // FIX: Changed default to null and used WhenWritingNull.
-        // This ensures the ID is not sent on POST, forcing the database to use its DEFAULT value.
+        // --- ID ---
+        [PrimaryKey("id", false)]
         [JsonPropertyName("id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Id { get; set; } = null;
+        public string? Id { get; set; }
 
-        // DB Column: date
+        // --- Date ---
+        [Column("date")]
         [Required]
         [JsonPropertyName("date")]
         public DateTime Date { get; set; }
 
-        // DB Column: amount
+        // --- Amount ---
+        [Column("amount")]
         [Required]
         [JsonPropertyName("amount")]
         public decimal Amount { get; set; }
 
-        // DB Column: currency
+        // --- Currency ---
+        [Column("currency")]
+        [Required]
         [JsonPropertyName("currency")]
         public string Currency { get; set; } = string.Empty;
 
-        // DB Column: channel
+        // --- Channel ---
+        [Column("channel")]
+        [Required]
         [JsonPropertyName("channel")]
         public string Channel { get; set; } = string.Empty;
 
-        // DB Column: motif
+        // --- Motif ---
+        [Column("motif")]
         [JsonPropertyName("motif")]
-        public string Motif { get; set; } = string.Empty;
+        public string? Motif { get; set; }
 
-        // DB Column: file_url
+        // --- File URL ---
+        [Column("file_url")]
         [JsonPropertyName("file_url")]
         public string? FileUrl { get; set; }
 
-        // DB Column: status
+        // --- Status ---
+        [Column("status")]
         [JsonPropertyName("status")]
         public string Status { get; set; } = "Pending";
 
-        // Foreign Key ID
+        // --- Foreign Key ---
+        [Column("user_id")]
         [Required]
         [JsonPropertyName("user_id")]
         public string UserId { get; set; } = string.Empty;
 
+        // --- Joined User (optional join result) ---
         [JsonIgnore]
         [JsonPropertyName("user")]
         public JoinedUser? User { get; set; }
@@ -104,9 +116,6 @@ namespace FinSys.Models
         public string Email { get; set; } = string.Empty;
     }
 
-    // ----------------------------------------------------
-    // TransactionFormRequest DTO (for ASP.NET Core Form Binding)
-    // ----------------------------------------------------
     public class TransactionFormRequest
     {
         [Required]
@@ -127,7 +136,6 @@ namespace FinSys.Models
         public IFormFile? File { get; set; }
     }
 
-    // DTO for Admin Update Request
     public class TransactionUpdateRequest
     {
         public DateTime Date { get; set; }
@@ -137,4 +145,6 @@ namespace FinSys.Models
         public string Motif { get; set; } = string.Empty;
         public string? FileUrl { get; set; }
     }
+
+
 }
