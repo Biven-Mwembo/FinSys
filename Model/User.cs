@@ -16,7 +16,6 @@ namespace FinSys.Models
     // ----------------------------------------------------
     public class User
     {
-        // 🏆 CHANGE 1: Primary Key (PK) changed from Guid to string (e.g., "USER001")
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 
@@ -47,7 +46,6 @@ namespace FinSys.Models
 
     public class Transaction
     {
-        // 🏆 CHANGE 2: Primary Key (PK) changed from Guid to string (e.g., "TR001")
         [JsonPropertyName("id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Id { get; set; } = string.Empty;
@@ -82,10 +80,7 @@ namespace FinSys.Models
         [JsonPropertyName("status")]
         public string Status { get; set; } = "Pending";
 
-        // ----------------------------------------------------------------------
         // Foreign Key ID
-        // This maps to the 'user_id' column in the database and is used when POSTing/PATCHing.
-        // 🏆 CHANGE 3: Foreign Key (FK) type changed from Guid to string
         [Required]
         [JsonPropertyName("user_id")]
         public string UserId { get; set; } = string.Empty;
@@ -93,8 +88,6 @@ namespace FinSys.Models
         [JsonIgnore] 
         [JsonPropertyName("UserDetails")]
         public JoinedUser? UserDetails { get; set; }
-
-        // ----------------------------------------------------------------------
     }
 
     public class JoinedUser
