@@ -9,13 +9,13 @@ using System;
 using System.ComponentModel.DataAnnotations; 
 using System.Security.Claims;
 using System.Threading.Tasks;
-using System.Collections.Generic; // Added for List<object>
+using System.Collections.Generic; 
 
 namespace FinSys.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("api/[controller]")] // Base route: /api/transactions
+    [Route("api/[controller]")]
     public class TransactionsController : ControllerBase
     {
         private readonly SupabaseService _supabase;
@@ -25,20 +25,17 @@ namespace FinSys.Controllers
             _supabase = supabase;
         }
 
-        // Helper to get the user ID from the JWT. Now returns string (e.g., "USER001").
+        // Helper to get the user ID from the JWT. Returns string (e.g., "USER001").
         private string GetUserIdFromToken()
         {
-            // 🏆 CHANGE: The 'id' claim should now hold the string Primary Key (e.g., "USER001")
             var userIdString = User.FindFirstValue("id") ?? throw new UnauthorizedAccessException("User ID claim not found.");
             return userIdString;
         }
 
         // GET: /api/transactions/user/{userId}
-        // 🏆 CHANGE: userId is now string
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetTransactionsByUser(string userId)
         {
-            // No Guid.TryParse needed, just ensure it's not empty if desired
             if (string.IsNullOrEmpty(userId))
             {
                 return BadRequest(new { Message = "Invalid user ID format." });
@@ -46,7 +43,7 @@ namespace FinSys.Controllers
 
             var tokenUserId = GetUserIdFromToken();
 
-            // 🔑 PROTECTION: Ensure the requested userId matches the ID in the token
+            // PROTECTION: Ensure the requested userId matches the ID in the token
             if (tokenUserId != userId && !User.IsInRole("admin"))
             {
                 return Forbid("Access to other users' transactions is forbidden.");
@@ -76,11 +73,11 @@ namespace FinSys.Controllers
                 return BadRequest(ModelState);
             }
 
-            var secureUserId = GetUserIdFromToken(); // Returns string (e.g., "USER001")
+            var secureUserId = GetUserIdFromToken(); 
 
             try
             {
-                // 1. Handle File Upload (Unchanged)
+                // 1. Handle File Upload
                 string? fileUrl = null;
                 if (request.File != null)
                 {
@@ -88,10 +85,9 @@ namespace FinSys.Controllers
                 }
 
                 // 2. Determine Transaction Status based on Channel
-                var transactionStatus = "Approved"; // Default to Approved
+                var transactionStatus = "Approved"; 
                 var responseMessage = "Transaction added successfully.";
                 
-                // 🔑 NEW LOGIC: If Channel is "Sorties", set status to Pending
                 if (request.Channel.Equals("Sorties", StringComparison.OrdinalIgnoreCase))
                 {
                     transactionStatus = "Pending";
@@ -107,7 +103,7 @@ namespace FinSys.Controllers
                     Channel = request.Channel,
                     Motif = request.Motif,
                     FileUrl = fileUrl,
-                    UserId = secureUserId, // 🏆 CHANGE: UserId is now string
+                    UserId = secureUserId, 
                     Status = transactionStatus
                 };
 
@@ -145,7 +141,7 @@ public async Task<IActionResult> GetPendingTransactions()
 
         if (pendingTransactions == null || pendingTransactions.Count == 0)
         {
-            return Ok(new List<object>()); // Return empty list for clean frontend handling
+            return Ok(new List<object>()); 
         }
 
         return Ok(pendingTransactions);
@@ -160,7 +156,6 @@ public async Task<IActionResult> GetPendingTransactions()
 // ADMIN: Get ALL user transactions (pending, approved, declined)
 // ------------------------------------------------------------------
 
-// 🏆 CHANGE: Add HttpGet attribute
 [HttpGet("all-admin")] 
 [Authorize(Roles = "admin")]
 public async Task<IActionResult> GetAllTransactions()
@@ -171,7 +166,7 @@ public async Task<IActionResult> GetAllTransactions()
 
         if (allTransactions == null || allTransactions.Count == 0)
         {
-            return Ok(new List<object>()); // Clean empty response
+            return Ok(new List<object>()); 
         }
 
         return Ok(allTransactions);
@@ -187,16 +182,13 @@ public async Task<IActionResult> GetAllTransactions()
         // PRIVILEGED ROLES METHODS (ADMIN/FINANCIER/PASTEUR/VP)
         // ------------------------------------------------------------------
 
-        // 🔑 PRIVILEGED READ: GET: /api/transactions/all
-        // This endpoint is used by the FinancierTransactionsPage to get all data.
+        // PRIVILEGED READ: GET: /api/transactions/all
         [HttpGet("all")]
-        // 🛡️ AUTHORIZE FIX: Allow Admin, Financier, Vice-President, and Pasteur roles
        [Authorize(Roles = "admin,financier,vice-president,pasteur")] 
         public async Task<IActionResult> GetAllTransactionsForPrivilegedRoles()
         {
             try
             {
-                // This method correctly fetches all transactions
                 var transactions = await _supabase.GetAllTransactionsWithUsers();
 
                 if (transactions == null)
@@ -213,11 +205,9 @@ public async Task<IActionResult> GetAllTransactions()
         }
 
 
-        // 🔑 ADMIN UPDATE: PUT: /api/transactions/{id}
-        // 🏆 CHANGE: id type changed from Guid to string
+        // ADMIN UPDATE: PUT: /api/transactions/{id}
         [HttpPut("{id}")] 
-        [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
-        // 🔑 DTO FIX: Using TransactionUpdateRequest from FinSys.Models
+        [Authorize(Roles = "admin")] 
         public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -228,11 +218,10 @@ public async Task<IActionResult> GetAllTransactions()
 
                 if (!updated)
                 {
-                    // Check if it's specifically a 404 from Supabase (you could expose status from service)
                     return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
                 }
 
-                return NoContent(); // 204
+                return NoContent(); 
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -244,65 +233,58 @@ public async Task<IActionResult> GetAllTransactions()
             }
         }
 
-        // ------------------------------------------------------------------
-// ADMIN: Approve or Reject Pending Transactions
-// ------------------------------------------------------------------
-// 🏆 CHANGE: id type changed from Guid to string
-[HttpPut("{id}/approved")]
-[Authorize(Roles = "admin")]
-public async Task<IActionResult> ApproveTransaction(string id)
-{
-    try
-    {
-        var transaction = await _supabase.GetTransactionById(id);
-        if (transaction == null)
-            return NotFound(new { Message = "Transaction not found." });
+        // ADMIN: Approve or Reject Pending Transactions
+        [HttpPut("{id}/approved")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> ApproveTransaction(string id)
+        {
+            try
+            {
+                var transaction = await _supabase.GetTransactionById(id);
+                if (transaction == null)
+                    return NotFound(new { Message = "Transaction not found." });
 
-        if (transaction.Status == "Approved")
-            return BadRequest(new { Message = "Transaction is already approved." });
+                if (transaction.Status == "Approved")
+                    return BadRequest(new { Message = "Transaction is already approved." });
 
-        transaction.Status = "Approved";
-        // Call the service with the string ID
-        await _supabase.UpdateTransactionStatus(id, "Approved"); 
+                transaction.Status = "Approved";
+                await _supabase.UpdateTransactionStatus(id, "Approved"); 
 
-        return Ok(new { Message = "Transaction approved successfully." });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
-    }
-}
-// 🏆 CHANGE: id type changed from Guid to string
-[HttpPut("{id}/declined")]
-[Authorize(Roles = "admin")]
-public async Task<IActionResult> RejectTransaction(string id)
-{
-    try
-    {
-        var transaction = await _supabase.GetTransactionById(id);
-        if (transaction == null)
-            return NotFound(new { Message = "Transaction not found." });
+                return Ok(new { Message = "Transaction approved successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
+            }
+        }
+        [HttpPut("{id}/declined")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> RejectTransaction(string id)
+        {
+            try
+            {
+                var transaction = await _supabase.GetTransactionById(id);
+                if (transaction == null)
+                    return NotFound(new { Message = "Transaction not found." });
 
-        if (transaction.Status == "Rejected")
-            return BadRequest(new { Message = "Transaction is already rejected." });
+                if (transaction.Status == "Rejected")
+                    return BadRequest(new { Message = "Transaction is already rejected." });
 
-        transaction.Status = "Rejected";
-        // Call the service with the string ID
-        await _supabase.UpdateTransactionStatus(id, "Rejected");
+                transaction.Status = "Rejected";
+                await _supabase.UpdateTransactionStatus(id, "Rejected");
 
-        return Ok(new { Message = "Transaction rejected successfully." });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { Message = "Failed to reject transaction.", Details = ex.Message });
-    }
-}
+                return Ok(new { Message = "Transaction rejected successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Failed to reject transaction.", Details = ex.Message });
+            }
+        }
 
 
-        // 🔑 ADMIN DELETE: DELETE: /api/transactions/{id}
-        // 🏆 CHANGE: id type changed from Guid to string
+        // ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "admin")] // 🛡️ ONLY ADMINS CAN ACCESS THIS
+        [Authorize(Roles = "admin")] 
         public async Task<IActionResult> DeleteTransaction(string id)
         {
             try
@@ -314,7 +296,7 @@ public async Task<IActionResult> RejectTransaction(string id)
                     return NotFound(new { Message = $"Transaction with ID {id} not found." });
                 }
 
-                return NoContent(); // 204 success, no content to return
+                return NoContent(); 
             }
             catch (Exception ex)
             {
@@ -322,10 +304,7 @@ public async Task<IActionResult> RejectTransaction(string id)
             }
         }
 
-        // ------------------------------------------------------------------
         // SINGLE ITEM GET
-        // ------------------------------------------------------------------
-        // 🏆 CHANGE: id type changed from Guid to string
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTransactionById(string id)
         {
@@ -344,7 +323,7 @@ public async Task<IActionResult> RejectTransaction(string id)
                     return NotFound(new { Message = $"Transaction with ID {id} not found." });
                 }
 
-                // 🔑 PROTECTION: Ensure the requested transaction belongs to the user, or the user is Admin
+                // PROTECTION: Ensure the requested transaction belongs to the user, or the user is Admin
                 var tokenUserId = GetUserIdFromToken();
                 if (tokenUserId != transaction.UserId && !User.IsInRole("Admin"))
                 {
@@ -361,7 +340,7 @@ public async Task<IActionResult> RejectTransaction(string id)
         
         // Deprecated GET: /api/transactions
         [HttpGet]
-        [AllowAnonymous] // Allow anyone to see this message
+        [AllowAnonymous] 
         public IActionResult GetTransactions()
         {
             return BadRequest(new { Message = "Please use /api/transactions/user/{userId} or /api/transactions/all." });
