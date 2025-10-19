@@ -82,7 +82,7 @@ namespace FinSys.Services
         }
         public async Task<List<Transaction>> GetPendingTransactions()
         {
-            var selectQuery = "*,UserDetails:users(name,surname,email)";
+            var selectQuery = "*,User:users(name,surname,email)";
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?status=eq.Pending&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
