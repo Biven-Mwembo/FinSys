@@ -302,40 +302,34 @@ namespace FinSys.Services
 
         // id is now string
 
-        public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
+       // 📁 SupabaseService.cs
 
-        {
+public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
+{
+    var jsonContent = JsonSerializer.Serialize(request);
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            var jsonContent = JsonSerializer.Serialize(request);
+    // 1. Encode the ID
+    var encodedId = Uri.EscapeDataString(id);
 
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+    // 2. Construct the request message using HttpMethod.Patch
+    //    ✅ CRITICAL FIX: The encodedId is wrapped in single quotes ('') 
+    //    because string PKs need to be quoted in PostgREST filters.
+    var requestMessage = new HttpRequestMessage(
+        HttpMethod.Patch, 
+        // URL will look like: /transactions?id=eq.'TR065'
+        $"{_baseUrl}/transactions?id=eq.'{encodedId}'" 
+    );
+    
+    requestMessage.Content = content;
+    requestMessage.Headers.Add("Prefer", "return=representation");
 
+    var response = await _httpClient.SendAsync(requestMessage);
+    var json = await response.Content.ReadAsStringAsync();
+    Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
 
-
-            // Targeting new string PK 'id'
-
-            var encodedId = Uri.EscapeDataString(id);
-
-            var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
-
-            requestMessage.Content = content;
-
-            requestMessage.Headers.Add("Prefer", "return=representation");
-
-
-
-            var response = await _httpClient.SendAsync(requestMessage);
-
-            var json = await response.Content.ReadAsStringAsync();
-
-            Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
-
-
-
-            return response.IsSuccessStatusCode;
-
-        }
-
+    return response.IsSuccessStatusCode;
+}
 
 
         // id is now string
