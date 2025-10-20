@@ -1,683 +1,380 @@
+// FinSys/Services/SupabaseService.cs
+
 using FinSys.Models;
-
 using Microsoft.AspNetCore.Http;
-
 using Microsoft.AspNetCore.Hosting;
-
 using System;
-
 using System.Collections.Generic;
-
 using System.IO;
-
 using System.Linq;
-
 using System.Net.Http;
-
 using System.Net.Http.Headers;
-
 using System.Text;
-
 using System.Text.Json;
-
 using System.Threading.Tasks;
 
-
-
 namespace FinSys.Services
-
 {
-
     public class SupabaseService
-
     {
-
         private readonly string _baseUrl = "https://vyalbnxrxlhindldezhq.supabase.co/rest/v1";
-
         private readonly string _authBaseUrl = "https://vyalbnxrxlhindldezhq.supabase.co/auth/v1";
-
+        // NOTE: For production, use environment variables for this API Key
         private readonly string _apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5YWxibnhyeGxoaW5kbGRlemhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTcxNzcsImV4cCI6MjA3NDQ5MzE3N30.khe9gkuYTBnb50d6SMtoJkqbKU8NKzIJ-j2Pd7_yDHE";
-
         private readonly HttpClient _httpClient;
-
         private readonly IWebHostEnvironment _env;
 
-
-
         public SupabaseService(IWebHostEnvironment env)
-
         {
-
             _env = env;
-
             _httpClient = new HttpClient();
-
             _httpClient.DefaultRequestHeaders.Clear();
 
-
-
             _httpClient.DefaultRequestHeaders.Add("apikey", _apiKey);
-
             _httpClient.DefaultRequestHeaders.Authorization =
-
                 new AuthenticationHeaderValue("Bearer", _apiKey);
-
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
         }
 
-
-
         // ------------------------------------------------------------------
-
         // CORE FILE SAVING
-
         // ------------------------------------------------------------------
-
-
 
         public async Task<string> SaveFile(IFormFile file)
-
         {
-
             if (file == null) return string.Empty;
-
             var folder = Path.Combine(_env.WebRootPath, "uploads");
 
-
-
             if (!Directory.Exists(folder))
-
             {
-
                 Directory.CreateDirectory(folder);
-
             }
 
-
-
             var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-
             var filePath = Path.Combine(folder, fileName);
 
-
-
             using var stream = new FileStream(filePath, FileMode.Create);
-
             await file.CopyToAsync(stream);
 
-
-
             return $"/uploads/{fileName}";
-
         }
 
+        // ------------------------------------------------------------------
+        // TRANSACTION UPDATE METHODS
+        // ------------------------------------------------------------------
 
-
-        // transactionId is now string (e.g., "TR001")
-
-        public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
-
+        /// <summary>
+        /// Updates one or more fields of a Transaction record.
+        /// </summary>
+        public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
         {
-
-            var updateData = new Dictionary<string, object?>
-
-            {
-
-                ["status"] = newStatus,
-
-                ["updated_at"] = DateTime.UtcNow
-
-            };
-
-
-
-            var jsonContent = JsonSerializer.Serialize(updateData);
-
+            var jsonContent = JsonSerializer.Serialize(request);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
+            // 1. Encode the ID
+            var encodedId = Uri.EscapeDataString(id);
 
+            // 2. CRITICAL FIX: Wrap string PK in single quotes for PostgREST filter
+            var requestMessage = new HttpRequestMessage(
+                HttpMethod.Patch,
+                $"{_baseUrl}/transactions?id=eq.'{encodedId}'"
+            );
+            
+            requestMessage.Content = content;
+            requestMessage.Headers.Add("Prefer", "return=representation");
 
-            // Targeting the new string Primary Key 'id'
+            var response = await _httpClient.SendAsync(requestMessage);
+            var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
 
+            return response.IsSuccessStatusCode;
+        }
+
+        /// <summary>
+        /// Updates only the status of a Transaction record (used for Approve/Reject).
+        /// </summary>
+        public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
+        {
+            var updateData = new Dictionary<string, object?>
+            {
+                ["status"] = newStatus,
+                ["updated_at"] = DateTime.UtcNow
+            };
+
+            var jsonContent = JsonSerializer.Serialize(updateData);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            // CRITICAL FIX: Wrap string PK in single quotes for PostgREST filter
             var encodedTransactionId = Uri.EscapeDataString(transactionId);
-
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
-
+            var request = new HttpRequestMessage(
+                HttpMethod.Patch, 
+                $"{_baseUrl}/transactions?id=eq.'{encodedTransactionId}'"
+            );
+            
             request.Content = content;
-
             request.Headers.Add("Prefer", "return=representation");
 
-
-
             var response = await _httpClient.SendAsync(request);
-
             var json = await response.Content.ReadAsStringAsync();
-
-
 
             Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
 
-
-
             return response.IsSuccessStatusCode;
-
         }
+        
+        // ------------------------------------------------------------------
+        // TRANSACTION GET METHODS
+        // ------------------------------------------------------------------
 
-
-
-        public async Task<List<Transaction>> GetPendingTransactions()
-
+        // id is now string
+        public async Task<Transaction?> GetTransactionById(string id)
         {
-
             var selectQuery = "*,user:users(name,surname,email)";
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?status=eq.Pending&select={selectQuery}");
-
+            // CRITICAL FIX: Wrap string PK in single quotes for PostgREST filter
+            var encodedId = Uri.EscapeDataString(id);
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.'{encodedId}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
-
-
-
-            Console.WriteLine($"[GetPendingTransactions] Status: {response.StatusCode}, Body: {json}");
-
-
 
             if (!response.IsSuccessStatusCode)
-
             {
-
-                throw new HttpRequestException($"Failed to fetch pending transactions. Status: {response.StatusCode}, Response: {json}");
-
+                throw new HttpRequestException(
+                    $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
+                );
             }
 
-
-
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
-            return transactions ?? new List<Transaction>();
-
+            return transactions?.FirstOrDefault();
         }
 
-
-
-        // ------------------------------------------------------------------
-
-        // TRANSACTION CRUD METHODS (Updated for string IDs)
-
-        // ------------------------------------------------------------------
-
-
-
         // userId is now string
-
         public async Task<List<Transaction>> GetTransactionsByUser(string userId)
-
         {
-
             var selectQuery = "*,user:users(name,surname,email)";
 
-
-
-            // user_id is now a string FK, no uuid cast needed
-
+            // CRITICAL FIX: Wrap string FK in single quotes for PostgREST filter
             var encodedUserId = Uri.EscapeDataString(userId);
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.{encodedUserId}&select={selectQuery}");
-
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.'{encodedUserId}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
-
-
 
             Console.WriteLine($"[GetTransactionsByUser] Status: {response.StatusCode}, Body: {json}");
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Supabase query failed for user {userId}. Status: {response.StatusCode}. Response: {json}",
-
                     null,
-
                     response.StatusCode
-
                 );
-
             }
 
-
-
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
             return transactions ?? new List<Transaction>();
-
         }
-
-
-
-        public async Task<List<Transaction>> GetAllTransactionsWithUsers()
-
+        
+        public async Task<List<Transaction>> GetPendingTransactions()
         {
-
             var selectQuery = "*,user:users(name,surname,email)";
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?select={selectQuery}");
-
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?status=eq.Pending&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
+            Console.WriteLine($"[GetPendingTransactions] Status: {response.StatusCode}, Body: {json}");
 
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to fetch pending transactions. Status: {response.StatusCode}, Response: {json}");
+            }
+
+            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+            return transactions ?? new List<Transaction>();
+        }
+
+        public async Task<List<Transaction>> GetAllTransactionsWithUsers()
+        {
+            var selectQuery = "*,user:users(name,surname,email)";
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?select={selectQuery}");
+            var json = await response.Content.ReadAsStringAsync();
 
             Console.WriteLine($"[GetAllTransactionsWithUsers] Status: {response.StatusCode}, Body: {json}");
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch all transactions (Admin). Status: {response.StatusCode}. Supabase Response: {json}",
-
                     null,
-
                     response.StatusCode
-
                 );
-
             }
 
-
-
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
             return transactions ?? new List<Transaction>();
+        }
 
+        public async Task<List<Transaction>> GetTransactions()
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions");
+            var json = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<List<Transaction>>(json) ?? new List<Transaction>();
         }
 
 
+        // ------------------------------------------------------------------
+        // TRANSACTION DELETE METHOD
+        // ------------------------------------------------------------------
 
         // id is now string
-
-       // 📁 SupabaseService.cs
-
-public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
-{
-    var jsonContent = JsonSerializer.Serialize(request);
-    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-    // 1. Encode the ID
-    var encodedId = Uri.EscapeDataString(id);
-
-    // 2. Construct the request message using HttpMethod.Patch
-    //    ✅ CRITICAL FIX: The encodedId is wrapped in single quotes ('') 
-    //    because string PKs need to be quoted in PostgREST filters.
-    var requestMessage = new HttpRequestMessage(
-        HttpMethod.Patch, 
-        // URL will look like: /transactions?id=eq.'TR065'
-        $"{_baseUrl}/transactions?id=eq.'{encodedId}'" 
-    );
-    
-    requestMessage.Content = content;
-    requestMessage.Headers.Add("Prefer", "return=representation");
-
-    var response = await _httpClient.SendAsync(requestMessage);
-    var json = await response.Content.ReadAsStringAsync();
-    Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
-
-    return response.IsSuccessStatusCode;
-}
-
-
-        // id is now string
-
         public async Task<bool> DeleteTransaction(string id)
-
         {
-
-            // Targeting new string PK 'id'
-
+            // CRITICAL FIX: Wrap string PK in single quotes for PostgREST filter
             var encodedId = Uri.EscapeDataString(id);
-
-            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.{encodedId}");
-
-
+            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.'{encodedId}'");
 
             Console.WriteLine($"[DeleteTransaction] Status: {response.StatusCode}");
 
-
-
             return response.IsSuccessStatusCode;
-
         }
 
-
-
-        public async Task<List<Transaction>> GetTransactions()
-
+        // ------------------------------------------------------------------
+        // TRANSACTION CREATE METHOD
+        // ------------------------------------------------------------------
+        
+        public async Task<Transaction> AddTransaction(Transaction transaction)
         {
+            // FIX: Set the primary key ID to null so that the database's 
+            // sequential DEFAULT function ('TR' || lpad(nextval...)) is used.
+            transaction.Id = null;
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions");
-
+            var jsonContent = JsonSerializer.Serialize(transaction);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/transactions");
+            request.Content = content;
+            request.Headers.Add("Prefer", "return=representation");
+            var response = await _httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
-
-            response.EnsureSuccessStatusCode();
-
-            return JsonSerializer.Deserialize<List<Transaction>>(json) ?? new List<Transaction>();
-
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
+            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+            return transactions?[0] ?? transaction;
         }
-
-
+        
+        // ------------------------------------------------------------------
+        // USER CRUD/AUTH METHODS (All methods that filter by ID or Email also need quotes)
+        // ------------------------------------------------------------------
 
         public async Task<List<User>> GetUsers()
-
         {
-
             var selectQuery = "*, role";
-
             var response = await _httpClient.GetAsync($"{_baseUrl}/users?select={selectQuery}");
-
             var json = await response.Content.ReadAsStringAsync();
-
             Console.WriteLine($"[GetUsers] Status: {response.StatusCode}, Body: {json}");
-
             
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch users. Status: {response.StatusCode}, Response: {json}"
-
                 );
-
             }
-
-
 
             return JsonSerializer.Deserialize<List<User>>(json) ?? new List<User>();
-
         }
-
-
 
         public async Task<List<User>> GetAllUsers()
-
         {
-
             var selectQuery = "*, role";
-
             var response = await _httpClient.GetAsync($"{_baseUrl}/users?select={selectQuery}");
-
             var json = await response.Content.ReadAsStringAsync();
-
             Console.WriteLine($"[GetAllUsers] Status: {response.StatusCode}, Body: {json}");
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch all users. Status: {response.StatusCode}, Response: {json}"
-
                 );
-
             }
 
-
-
             var users = JsonSerializer.Deserialize<List<User>>(json);
-
             return users ?? new List<User>();
-
         }
 
-
-
         // userId is now string
-
         public async Task<User?> GetUserById(string userId)
-
         {
-
             var selectQuery = "*, role";
 
-
-
-            // Targeting new string PK 'id'
-
+            // CRITICAL FIX: Wrap string PK in single quotes for PostgREST filter
             var encodedUserId = Uri.EscapeDataString(userId);
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.{encodedUserId}&select={selectQuery}");
-
+            var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.'{encodedUserId}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
-
-
 
             Console.WriteLine($"[GetUserById] Status: {response.StatusCode}, Body: {json}");
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch user by ID. Status: {response.StatusCode}, Response: {json}"
-
                 );
-
             }
 
-
-
             var users = JsonSerializer.Deserialize<List<User>>(json);
-
             return users?.FirstOrDefault();
-
         }
 
-
-
         public async Task<User?> GetUserByEmail(string email)
-
         {
-
             var selectQuery = "*, role";
 
-
-
-            // Targeting new string PK 'email'
-
+            // CRITICAL FIX: Wrap string value in single quotes for PostgREST filter
             var encodedEmail = Uri.EscapeDataString(email);
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.{encodedEmail}&select={selectQuery}");
-
+            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.'{encodedEmail}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
-
-
 
             Console.WriteLine($"[GetUserByEmail] Status: {response.StatusCode}, Body: {json}");
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch user by email. Status: {response.StatusCode}, Response: {json}"
-
                 );
-
             }
 
-
-
             var users = JsonSerializer.Deserialize<List<User>>(json);
-
             return users?.FirstOrDefault();
-
         }
-
-
-
-        public async Task<Transaction> AddTransaction(Transaction transaction)
-
-        {
-
-            // FIX: Set the primary key ID to null so that the database's 
-
-            // sequential DEFAULT function ('TR' || lpad(nextval...)) is used,
-
-            // avoiding the "duplicate key value" constraint violation.
-
-            transaction.Id = null;
-
-
-
-            var jsonContent = JsonSerializer.Serialize(transaction);
-
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/transactions");
-
-            request.Content = content;
-
-            request.Headers.Add("Prefer", "return=representation");
-
-            var response = await _httpClient.SendAsync(request);
-
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-
-                throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
-
-            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
-            return transactions?[0] ?? transaction;
-
-        }
-
-
-
+        
         public async Task<User> AddUser(User user)
-
         {
-
             // ID is automatically generated by the database
-
             var jsonContent = JsonSerializer.Serialize(user);
-
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/users");
-
             request.Content = content;
-
             request.Headers.Add("Prefer", "return=representation");
-
             var response = await _httpClient.SendAsync(request);
-
             var json = await response.Content.ReadAsStringAsync();
-
             if (!response.IsSuccessStatusCode)
-
                 throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
-
             var users = JsonSerializer.Deserialize<List<User>>(json);
-
             return users?[0] ?? user;
-
         }
 
-
-
-        // --- AUTHENTICATION METHODS (Updated for string IDs) ---
-
-
-
+        // --- AUTHENTICATION METHODS ---
+        
         public async Task<User?> SimpleLoginAsync(string email, string password)
-
         {
-
             var user = await GetUserByEmail(email);
 
-
-
             if (user == null || string.IsNullOrWhiteSpace(user.Password))
-
             {
-
                 return null;
-
             }
 
-
-
+            // DANGER: Plaintext password comparison. Consider implementing hashing.
             if (user.Password == password)
-
             {
-
                 return user; // Returns User object with string ID
-
             }
-
             return null;
-
         }
-
-
-
-        // id is now string
-
-        public async Task<Transaction?> GetTransactionById(string id)
-
-        {
-
-            var selectQuery = "*,user:users(name,surname,email)";
-
-
-
-            var encodedId = Uri.EscapeDataString(id);
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{encodedId}&select={selectQuery}");
-
-            var json = await response.Content.ReadAsStringAsync();
-
-
-
-            if (!response.IsSuccessStatusCode)
-
-            {
-
-                throw new HttpRequestException(
-
-                    $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
-
-                );
-
-            }
-
-
-
-            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
-            return transactions?.FirstOrDefault();
-
-        }
-
     }
-
 }
