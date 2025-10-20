@@ -206,32 +206,32 @@ public async Task<IActionResult> GetAllTransactions()
 
 
         // ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPut("{id}")] 
-        [Authorize(Roles = "admin")] 
-        public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
+        [HttpPatch("{id}")] // ⭐ CHANGED FROM [HttpPut] TO [HttpPatch] ⭐
+[Authorize(Roles = "admin")] 
+public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
+{
+    if (!ModelState.IsValid) return BadRequest(ModelState);
+
+    try
+    {
+        var updated = await _supabase.UpdateTransaction(id, request);
+
+        if (!updated)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            try
-            {
-                var updated = await _supabase.UpdateTransaction(id, request);
-
-                if (!updated)
-                {
-                    return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
-                }
-
-                return NoContent(); 
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
-            }
+            return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
         }
+
+        return NoContent(); 
+    }
+    catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+    {
+        return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
+    }
+}
 
         // ADMIN: Approve or Reject Pending Transactions
         [HttpPut("{id}/approved")]
