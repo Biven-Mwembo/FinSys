@@ -57,6 +57,7 @@ namespace FinSys.Services
         }
 
         // transactionId is now string (e.g., "TR001")
+        // ✅ FIX APPLIED: Quoting the string ID
         public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
         {
             var updateData = new Dictionary<string, object?>
@@ -68,8 +69,8 @@ namespace FinSys.Services
             var jsonContent = JsonSerializer.Serialize(updateData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // Targeting the new string Primary Key 'id'
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{transactionId}");
+            // Targeting the new string Primary Key 'id' - ***FIXED TO INCLUDE QUOTES***
+            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.'{transactionId}'");
             request.Content = content;
             request.Headers.Add("Prefer", "return=representation");
 
@@ -108,6 +109,7 @@ namespace FinSys.Services
             var selectQuery = "*,user:users(name,surname,email)";
 
             // user_id is now a string FK, no uuid cast needed
+            // NOTE: user_id is likely a UUID/integer/text without the 'TR' prefix, so no quote needed here unless the PK is non-standard.
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.{userId}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
@@ -148,13 +150,14 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: Quoting the string ID
         public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
         {
             var jsonContent = JsonSerializer.Serialize(request);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // Targeting new string PK 'id'
-            var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{id}");
+            // Targeting new string PK 'id' - ***FIXED TO INCLUDE QUOTES***
+            var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.'{id}'");
             requestMessage.Content = content;
             requestMessage.Headers.Add("Prefer", "return=representation");
 
@@ -166,10 +169,11 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: Quoting the string ID
         public async Task<bool> DeleteTransaction(string id)
         {
-            // Targeting new string PK 'id'
-            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.{id}");
+            // Targeting new string PK 'id' - ***FIXED TO INCLUDE QUOTES***
+            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.'{id}'");
 
             Console.WriteLine($"[DeleteTransaction] Status: {response.StatusCode}");
 
@@ -273,7 +277,7 @@ namespace FinSys.Services
             request.Content = content;
             request.Headers.Add("Prefer", "return=representation");
             var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsString();
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
@@ -316,11 +320,13 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: Quoting the string ID
         public async Task<Transaction?> GetTransactionById(string id)
         {
             var selectQuery = "*,user:users(name,surname,email)";
 
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{id}&select={selectQuery}");
+            // ***FIXED TO INCLUDE QUOTES***
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.'{id}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
