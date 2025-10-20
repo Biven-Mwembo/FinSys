@@ -16,7 +16,7 @@ namespace FinSys.Services
     public class SupabaseService
     {
         private readonly string _baseUrl = "https://vyalbnxrxlhindldezhq.supabase.co/rest/v1";
-        private readonly string _authBaseUrl = "https://vyalbnxrxlhindldezhq.supabase.co/auth/v1";
+        // REMOVED: private readonly string _authBaseUrl = "https://vyalbnxrxlhindldezhq.supabase.co/auth/v1";
         private readonly string _apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5YWxibnhyeGxoaW5kbGRlemhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg5MTcxNzcsImV4cCI6MjA3NDQ5MzE3N30.khe9gkuYTBnb50d6SMtoJkqbKU8NKzIJ-j2Pd7_yDHE";
         private readonly HttpClient _httpClient;
         private readonly IWebHostEnvironment _env;
@@ -277,7 +277,8 @@ namespace FinSys.Services
             request.Content = content;
             request.Headers.Add("Prefer", "return=representation");
             var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsString();
+            // ***BUILD FIX: Corrected typo from ReadAsStringAsString() to ReadAsStringAsync()***
+            var json = await response.Content.ReadAsStringAsync(); 
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException($"Supabase Post failed: {response.StatusCode}. Response: {json}");
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
