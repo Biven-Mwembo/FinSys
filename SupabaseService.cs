@@ -57,6 +57,7 @@ namespace FinSys.Services
         }
 
         // transactionId is now string (e.g., "TR001")
+        // ✅ FIX APPLIED: URL Encode ID and use single quotes for string PK filter
         public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
         {
             var updateData = new Dictionary<string, object?>
@@ -68,9 +69,9 @@ namespace FinSys.Services
             var jsonContent = JsonSerializer.Serialize(updateData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // Targeting the new string Primary Key 'id'
             var encodedTransactionId = Uri.EscapeDataString(transactionId);
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
+            // Targeting the new string Primary Key 'id' - ***URL ENCODED + QUOTES***
+            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.'{encodedTransactionId}'");
             request.Content = content;
             request.Headers.Add("Prefer", "return=representation");
 
@@ -81,7 +82,6 @@ namespace FinSys.Services
 
             return response.IsSuccessStatusCode;
         }
-
         public async Task<List<Transaction>> GetPendingTransactions()
         {
             var selectQuery = "*,user:users(name,surname,email)";
@@ -108,7 +108,7 @@ namespace FinSys.Services
         {
             var selectQuery = "*,user:users(name,surname,email)";
 
-            // user_id is now a string FK, no uuid cast needed
+            // user_id is now a string FK, no uuid cast needed. Assuming user_id is NOT a PK with the 'TR' prefix
             var encodedUserId = Uri.EscapeDataString(userId);
             var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?user_id=eq.{encodedUserId}&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
@@ -150,14 +150,15 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: URL Encode ID and use single quotes for string PK filter
         public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
         {
             var jsonContent = JsonSerializer.Serialize(request);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // Targeting new string PK 'id'
             var encodedId = Uri.EscapeDataString(id);
-            var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
+            // Targeting new string PK 'id' - ***URL ENCODED + QUOTES***
+            var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.'{encodedId}'");
             requestMessage.Content = content;
             requestMessage.Headers.Add("Prefer", "return=representation");
 
@@ -169,11 +170,12 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: URL Encode ID and use single quotes for string PK filter
         public async Task<bool> DeleteTransaction(string id)
         {
-            // Targeting new string PK 'id'
             var encodedId = Uri.EscapeDataString(id);
-            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.{encodedId}");
+            // Targeting new string PK 'id' - ***URL ENCODED + QUOTES***
+            var response = await _httpClient.DeleteAsync($"{_baseUrl}/transactions?id=eq.'{encodedId}'");
 
             Console.WriteLine($"[DeleteTransaction] Status: {response.StatusCode}");
 
@@ -230,7 +232,7 @@ namespace FinSys.Services
 
             // Targeting new string PK 'id'
             var encodedUserId = Uri.EscapeDataString(userId);
-            var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.{encodedUserId}&select={selectQuery}");
+            var response = await _httpClient.GetAsync($"{_baseUrl}/users?id=eq.'{encodedUserId}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
             Console.WriteLine($"[GetUserById] Status: {response.StatusCode}, Body: {json}");
@@ -252,7 +254,7 @@ namespace FinSys.Services
 
             // Targeting new string PK 'email'
             var encodedEmail = Uri.EscapeDataString(email);
-            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.{encodedEmail}&select={selectQuery}");
+            var response = await _httpClient.GetAsync($"{_baseUrl}/users?email=eq.'{encodedEmail}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
             Console.WriteLine($"[GetUserByEmail] Status: {response.StatusCode}, Body: {json}");
@@ -323,12 +325,14 @@ namespace FinSys.Services
         }
 
         // id is now string
+        // ✅ FIX APPLIED: URL Encode ID and use single quotes for string PK filter
         public async Task<Transaction?> GetTransactionById(string id)
         {
             var selectQuery = "*,user:users(name,surname,email)";
 
             var encodedId = Uri.EscapeDataString(id);
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{encodedId}&select={selectQuery}");
+            // ***URL ENCODED + QUOTES***
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.'{encodedId}'&select={selectQuery}");
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
