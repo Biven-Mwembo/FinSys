@@ -315,7 +315,7 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
     var encodedId = Uri.EscapeDataString(id);
     
     // Using 'eq.' first, since Delete works with 'eq.'
-    var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
+    var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=ilike.{encodedId}");
     requestMessage.Content = content;
     
     // This header is crucial: it makes Supabase return the updated record(s) if successful.
