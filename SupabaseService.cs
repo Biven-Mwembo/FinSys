@@ -142,7 +142,8 @@ namespace FinSys.Services
 
             var encodedTransactionId = Uri.EscapeDataString(transactionId);
 
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{id}",content);
+            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
+
 
             request.Content = content;
 
