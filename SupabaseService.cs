@@ -646,43 +646,35 @@ namespace FinSys.Services
 
 
 
+ 
+
+        
+
         // id is now string
-
         public async Task<Transaction?> GetTransactionById(string id)
-
         {
-
             var selectQuery = "*,user:users(name,surname,email)";
 
-
-
             var encodedId = Uri.EscapeDataString(id);
-
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=eq.{encodedId}&select={selectQuery}");
-
+            
+            // ⭐ CRITICAL FIX: Changed 'id=eq.' to 'id=ilike.' for case-insensitive matching
+            // This ensures "TR065" matches "tr065" in the database.
+            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=ilike.{encodedId}&select={selectQuery}"); 
+            
             var json = await response.Content.ReadAsStringAsync();
 
-
-
             if (!response.IsSuccessStatusCode)
-
             {
-
                 throw new HttpRequestException(
-
                     $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
-
                 );
-
             }
 
-
-
             var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-
             return transactions?.FirstOrDefault();
-
         }
+    }
+}
 
     }
 
