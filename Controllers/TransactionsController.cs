@@ -206,7 +206,7 @@ public async Task<IActionResult> GetAllTransactions()
 
 
         // ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPatch("{id}")] // ⭐ CHANGED FROM [HttpPut] TO [HttpPatch] ⭐
+        [HttpPatch("item/{id}")]// ⭐ CHANGED FROM [HttpPut] TO [HttpPatch] ⭐
 [Authorize(Roles = "admin")] 
 public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
 {
@@ -234,7 +234,7 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
 }
 
         // ADMIN: Approve or Reject Pending Transactions
-        [HttpPut("{id}/approved")]
+        [HttpPut("item/{id}/approved")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> ApproveTransaction(string id)
         {
@@ -257,7 +257,7 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
                 return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
             }
         }
-        [HttpPut("{id}/declined")]
+        [HttpPut("item/{id}/declined")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> RejectTransaction(string id)
         {
@@ -283,7 +283,7 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
 
 
         // ADMIN DELETE: DELETE: /api/transactions/{id}
-        [HttpDelete("{id}")]
+        [HttpDelete("item/{id}")]
         [Authorize(Roles = "admin")] 
         public async Task<IActionResult> DeleteTransaction(string id)
         {
@@ -305,7 +305,7 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
         }
 
         // SINGLE ITEM GET
-        [HttpGet("{id}")]
+       [HttpGet("item/{id}")]
         public async Task<IActionResult> GetTransactionById(string id)
         {
             // Remove Guid check
