@@ -308,41 +308,42 @@ namespace FinSys.Services
 // id is now string
 public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
 {
-    try
+    var jsonContent = JsonSerializer.Serialize(request);
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+    // Targeting new string PK 'id'
+    var encodedId = Uri.EscapeDataString(id);
+    
+    // Using 'eq.' first, since Delete works with 'eq.'
+    var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
+
+    requestMessage.Content = content;
+    
+    // This header is crucial: it makes Supabase return the updated record(s) if successful.
+    requestMessage.Headers.Add("Prefer", "return=representation"); 
+
+    var response = await _httpClient.SendAsync(requestMessage);
+    var json = await response.Content.ReadAsStringAsync();
+    
+    Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
+
+    // --- 🚨 CRITICAL FIX ---
+    if (response.IsSuccessStatusCode)
     {
-        var encodedId = Uri.EscapeDataString(id);
-        var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
-
-        // Add authorization header
-        requestMessage.Headers.Add("apikey", _apiKey);
-        requestMessage.Headers.Add("Authorization", $"Bearer {_apiKey}");
-        requestMessage.Headers.Add("Prefer", "return=representation");
-
-        // Convert body to JSON
-        var jsonContent = new
+        // If Supabase returns success (2xx) but the body is '[]', it means 0 rows were affected.
+        // We check if the trimmed JSON is empty or specifically "[]"
+        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
         {
-            status = request.Status,
-            motif = request.Motif,
-            amount = request.Amount,
-            channel = request.Channel
-        };
-
-        requestMessage.Content = new StringContent(
-            JsonSerializer.Serialize(jsonContent),
-            Encoding.UTF8,
-            "application/json"
-        );
-
-        var response = await _httpClient.SendAsync(requestMessage);
-        return response.IsSuccessStatusCode;
+            // The record was not found or not updated.
+            return false;
+        }
+        // If we get a success code AND a non-empty body (the updated object), it worked.
+        return true;
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[UpdateTransaction] Error: {ex.Message}");
-        return false;
-    }
+    
+    // If we get a clear error status code (e.g., 4xx, 5xx)
+    return false;
 }
-
 
 
 
@@ -685,5 +686,3 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
 }
 
     
-
-
