@@ -686,3 +686,4 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
     var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
     return transactions?.FirstOrDefault();
 }
+    }
