@@ -301,9 +301,7 @@ namespace FinSys.Services
 
 
 
-        // id is now string
-
-      // Inside FinSys/Services/SupabaseService.cs
+   
 
 // id is now string
 public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
@@ -311,39 +309,29 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
     var jsonContent = JsonSerializer.Serialize(request);
     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-    // Targeting new string PK 'id'
     var encodedId = Uri.EscapeDataString(id);
-    
-    // Using 'eq.' first, since Delete works with 'eq.'
-    var requestMessage = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedId}");
+
+    // ✅ Use your actual Supabase REST URL here
+    var requestMessage = new HttpRequestMessage(
+        HttpMethod.Patch,
+        $"{_supabaseUrl}/rest/v1/transactions?id=eq.{encodedId}"
+    );
 
     requestMessage.Content = content;
-    
-    // This header is crucial: it makes Supabase return the updated record(s) if successful.
-    requestMessage.Headers.Add("Prefer", "return=representation"); 
+
+    // 🔑 Add Supabase headers
+    requestMessage.Headers.Add("apikey", _supabaseAnonKey);
+    requestMessage.Headers.Add("Authorization", $"Bearer {_supabaseAnonKey}");
+    requestMessage.Headers.Add("Prefer", "return=representation");
 
     var response = await _httpClient.SendAsync(requestMessage);
     var json = await response.Content.ReadAsStringAsync();
-    
+
     Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
 
-    // --- 🚨 CRITICAL FIX ---
-    if (response.IsSuccessStatusCode)
-    {
-        // If Supabase returns success (2xx) but the body is '[]', it means 0 rows were affected.
-        // We check if the trimmed JSON is empty or specifically "[]"
-        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
-        {
-            // The record was not found or not updated.
-            return false;
-        }
-        // If we get a success code AND a non-empty body (the updated object), it worked.
-        return true;
-    }
-    
-    // If we get a clear error status code (e.g., 4xx, 5xx)
-    return false;
+    return response.IsSuccessStatusCode && json.Trim() != "[]";
 }
+
 
 
 
