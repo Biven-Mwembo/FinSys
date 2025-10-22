@@ -657,27 +657,32 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
         
 
         // id is now string
-        public async Task<Transaction?> GetTransactionById(string id)
-        {
-            var selectQuery = "*,user:users(name,surname,email)";
+       public async Task<Transaction?> GetTransactionById(string id)
+{
+    var selectQuery = "*,user:users(name,surname,email)";
+    var encodedId = Uri.EscapeDataString(id);
 
-            var encodedId = Uri.EscapeDataString(id);
-            
-            // ⭐ CRITICAL FIX: Changed 'id=eq.' to 'id=ilike.' for case-insensitive matching
-            // This ensures "TR065" matches "tr065" in the database.
-            var response = await _httpClient.GetAsync($"{_baseUrl}/transactions?id=ilike.{encodedId}&select={selectQuery}"); 
-            
-            var json = await response.Content.ReadAsStringAsync();
+    var request = new HttpRequestMessage(
+        HttpMethod.Get,
+        $"{_baseUrl}/transactions?id=eq.{encodedId}&select={selectQuery}"
+    );
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException(
-                    $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
-                );
-            }
+    // Add Supabase headers
+    request.Headers.Add("apikey", _apiKey);
+    request.Headers.Add("Authorization", $"Bearer {_apiKey}");
 
-            var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
-            return transactions?.FirstOrDefault();
-        }
+    var response = await _httpClient.SendAsync(request);
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[GetTransactionById] Status: {response.StatusCode}, Body: {json}");
+
+    if (!response.IsSuccessStatusCode)
+    {
+        throw new HttpRequestException(
+            $"Failed to fetch transaction by ID. Status: {response.StatusCode}, Response: {json}"
+        );
     }
+
+    var transactions = JsonSerializer.Deserialize<List<Transaction>>(json);
+    return transactions?.FirstOrDefault();
 }
