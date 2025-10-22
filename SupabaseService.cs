@@ -311,17 +311,17 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
 
     var encodedId = Uri.EscapeDataString(id);
 
-    // ✅ Use your actual Supabase REST URL here
+    // ✅ Use your existing _baseUrl and _apiKey
     var requestMessage = new HttpRequestMessage(
         HttpMethod.Patch,
-        $"{_supabaseUrl}/rest/v1/transactions?id=eq.{encodedId}"
+        $"{_baseUrl}/transactions?id=eq.{encodedId}"
     );
 
     requestMessage.Content = content;
 
     // 🔑 Add Supabase headers
-    requestMessage.Headers.Add("apikey", _supabaseAnonKey);
-    requestMessage.Headers.Add("Authorization", $"Bearer {_supabaseAnonKey}");
+    requestMessage.Headers.Add("apikey", _apiKey);
+    requestMessage.Headers.Add("Authorization", $"Bearer {_apiKey}");
     requestMessage.Headers.Add("Prefer", "return=representation");
 
     var response = await _httpClient.SendAsync(requestMessage);
@@ -329,7 +329,16 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
 
     Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
 
-    return response.IsSuccessStatusCode && json.Trim() != "[]";
+    // ✅ Handle “empty []” body from Supabase (no rows updated)
+    if (response.IsSuccessStatusCode)
+    {
+        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
+            return false;
+
+        return true;
+    }
+
+    return false;
 }
 
 
