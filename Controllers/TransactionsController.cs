@@ -260,7 +260,7 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
         [HttpPut("item/{id}/declined")]
         [Authorize(Roles = "admin")]
       
-public async Task<IActionResult> ApproveTransaction(string id)
+public async Task<IActionResult> RejectTransaction(string id)
 {
     try
     {
