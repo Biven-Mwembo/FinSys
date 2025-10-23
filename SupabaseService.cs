@@ -294,32 +294,79 @@ namespace FinSys.Services
    
 
 // id is now string
-     [HttpPatch("item/{id}")]
-     [Authorize(Roles = "admin")]
-     public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
-     {
-         Console.WriteLine($"[UpdateTransaction] Received ID: {id}, Request: {JsonSerializer.Serialize(request)}");  // Add this
-         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-         try
-         {
-             var updated = await _supabase.UpdateTransaction(id, request);
-             Console.WriteLine($"[UpdateTransaction] Update result: {updated}");  // Add this
+public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest request)
 
-             if (!updated)
-             {
-                 return NotFound(new { Message = $"Transaction with ID '{id}' not found or update failed." });
-             }
+{
 
-             return NoContent();
-         }
-         catch (Exception ex)
-         {
-             Console.WriteLine($"[UpdateTransaction] Exception: {ex.Message}");  // Add this
-             return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
-         }
-     }
-     
+    var jsonContent = JsonSerializer.Serialize(request);
+
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+
+
+    var encodedId = Uri.EscapeDataString(id);
+
+
+
+    // ✅ Use your existing _baseUrl and _apiKey
+
+    var requestMessage = new HttpRequestMessage(
+
+        HttpMethod.Patch,
+
+        $"{_baseUrl}/transactions?id=eq.{encodedId}"
+
+    );
+
+
+
+    requestMessage.Content = content;
+
+
+
+    // 🔑 Add Supabase headers
+
+    requestMessage.Headers.Add("apikey", _apiKey);
+
+    requestMessage.Headers.Add("Authorization", $"Bearer {_apiKey}");
+
+    requestMessage.Headers.Add("Prefer", "return=representation");
+
+
+
+    var response = await _httpClient.SendAsync(requestMessage);
+
+    var json = await response.Content.ReadAsStringAsync();
+
+
+
+    Console.WriteLine($"[UpdateTransaction] Status: {response.StatusCode}, Body: {json}");
+
+
+
+    // ✅ Handle “empty []” body from Supabase (no rows updated)
+
+    if (response.IsSuccessStatusCode)
+
+    {
+
+        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
+
+            return false;
+
+
+
+        return true;
+
+    }
+
+
+
+    return false;
+
+}
+
 
 
 
