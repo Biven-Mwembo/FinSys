@@ -114,57 +114,40 @@ namespace FinSys.Services
 
 
 
+       
+
         // transactionId is now string (e.g., "TR001")
-
         public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
-
         {
-
             var updateData = new Dictionary<string, object?>
-
             {
-
                 ["status"] = newStatus,
-
                 ["updated_at"] = DateTime.UtcNow
-
             };
 
-
-
             var jsonContent = JsonSerializer.Serialize(updateData);
-
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-
-
             // Targeting the new string Primary Key 'id'
-
             var encodedTransactionId = Uri.EscapeDataString(transactionId);
-
             var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
 
-
             request.Content = content;
-
             request.Headers.Add("Prefer", "return=representation");
 
-
+            // ⭐ START FIX: Add the missing auth headers
+            request.Headers.Add("apikey", _apiKey);
+            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            // ⭐ END FIX
 
             var response = await _httpClient.SendAsync(request);
-
             var json = await response.Content.ReadAsStringAsync();
-
-
 
             Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
 
-
-
+            // This will now return 'true' if the update succeeds
             return response.IsSuccessStatusCode;
-
         }
-
 
 
         public async Task<List<Transaction>> GetPendingTransactions()
