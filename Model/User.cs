@@ -128,13 +128,26 @@ namespace FinSys.Models
     }
 
     // DTO for Admin Update Request
-    public class TransactionUpdateRequest
-    {
-        public DateTime Date { get; set; }
-        public decimal Amount { get; set; }
-        public string Currency { get; set; } = string.Empty;
-        public string Channel { get; set; } = string.Empty;
-        public string Motif { get; set; } = string.Empty;
-        public string? FileUrl { get; set; }
-    }
+  // DTO for Admin Update Request
+public class TransactionUpdateRequest
+{
+    [JsonPropertyName("date")]  // Forces "date" in JSON (matches DB column)
+    public DateTime Date { get; set; }
+
+    [JsonPropertyName("amount")]  // Forces "amount" in JSON (matches DB column)
+    public decimal Amount { get; set; }
+
+    [JsonPropertyName("currency")]  // Forces "currency" in JSON (matches DB column)
+    public string Currency { get; set; } = string.Empty;
+
+    [JsonPropertyName("channel")]  // Forces "channel" in JSON (matches DB column)
+    public string Channel { get; set; } = string.Empty;
+
+    [JsonPropertyName("motif")]  // Forces "motif" in JSON (matches DB column)
+    public string Motif { get; set; } = string.Empty;
+
+    [JsonPropertyName("file_url")]  // Forces "file_url" in JSON (matches DB column; note the underscore)
+    public string? FileUrl { get; set; }  // Keep the property name as-is for C# consistency
+}
+
 }
