@@ -122,7 +122,7 @@ public async Task<bool> UpdateTransactionStatus(string transactionId, string new
 {
     var updateData = new Dictionary<string, object?>
     {
-        ["status"] = newStatus,
+        ["status"] = newStatus,  // Ensure this matches your Supabase column name (lowercase "status")
         ["updated_at"] = DateTime.UtcNow
     };
 
@@ -131,23 +131,26 @@ public async Task<bool> UpdateTransactionStatus(string transactionId, string new
 
     var encodedTransactionId = Uri.EscapeDataString(transactionId);
     var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
-
     request.Content = content;
     request.Headers.Add("Prefer", "return=representation");
-
-    // These headers are correct
-    request.Headers.Add("apikey", _apiKey);
-    request.Headers.Add("Authorization", $"Bearer {_apiKey}");
 
     var response = await _httpClient.SendAsync(request);
     var json = await response.Content.ReadAsStringAsync();
 
     Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
 
-    // ⭐ FIX THE TYPO HERE
-    return response.IsSuccessStatusCode;
+    if (response.IsSuccessStatusCode)
+    {
+        // Check if the response body indicates no rows were updated (empty array)
+        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
+        {
+            Console.WriteLine("[UpdateTransactionStatus] No rows updated - likely invalid ID or permissions.");
+            return false;  // Explicitly return false for no-op updates
+        }
+        return true;
+    }
+    return false;
 }
-
 
         public async Task<List<Transaction>> GetPendingTransactions()
 
