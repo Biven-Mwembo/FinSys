@@ -9,7 +9,8 @@ using System;
 using System.ComponentModel.DataAnnotations; 
 using System.Security.Claims;
 using System.Threading.Tasks;
-using System.Collections.Generic; 
+using System.Collections.Generic;
+using System.Text.Json; 
 
 namespace FinSys.Controllers
 {
