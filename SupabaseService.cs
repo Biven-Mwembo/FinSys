@@ -442,6 +442,48 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
 
         }
 
+        // In FinSys/Services/SupabaseService.cs
+
+// UPDATE USER (id is string)
+public async Task<bool> UpdateUser(string id, User user)
+{
+    var jsonContent = JsonSerializer.Serialize(user);
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+    var encodedId = Uri.EscapeDataString(id);
+    var requestMessage = new HttpRequestMessage(
+        HttpMethod.Patch,
+        $"{_baseUrl}/users?id=eq.{encodedId}"
+    );
+
+    requestMessage.Content = content;
+    requestMessage.Headers.Add("apikey", _apiKey);
+    requestMessage.Headers.Add("Authorization", $"Bearer {_apiKey}");
+    requestMessage.Headers.Add("Prefer", "return=representation");
+
+    var response = await _httpClient.SendAsync(requestMessage);
+    var json = await response.Content.ReadAsStringAsync();
+
+    Console.WriteLine($"[UpdateUser] Status: {response.StatusCode}, Body: {json}");
+
+    if (response.IsSuccessStatusCode)
+    {
+        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
+            return false;
+        return true;
+    }
+    return false;
+}
+
+// DELETE USER (id is string)
+public async Task<bool> DeleteUser(string id)
+{
+    var encodedId = Uri.EscapeDataString(id);
+    var response = await _httpClient.DeleteAsync($"{_baseUrl}/users?id=eq.{encodedId}");
+
+    Console.WriteLine($"[DeleteUser] Status: {response.StatusCode}");
+    return response.IsSuccessStatusCode;
+}
 
 
         public async Task<List<User>> GetAllUsers()
