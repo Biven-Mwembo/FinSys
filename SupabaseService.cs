@@ -116,38 +116,37 @@ namespace FinSys.Services
 
        
 
-        // transactionId is now string (e.g., "TR001")
-        public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
-        {
-            var updateData = new Dictionary<string, object?>
-            {
-                ["status"] = newStatus,
-                ["updated_at"] = DateTime.UtcNow
-            };
+       // FinSys/Services/SupabaseService.cs
 
-            var jsonContent = JsonSerializer.Serialize(updateData);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
+{
+    var updateData = new Dictionary<string, object?>
+    {
+        ["status"] = newStatus,
+        ["updated_at"] = DateTime.UtcNow
+    };
 
-            // Targeting the new string Primary Key 'id'
-            var encodedTransactionId = Uri.EscapeDataString(transactionId);
-            var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
+    var jsonContent = JsonSerializer.Serialize(updateData);
+    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            request.Content = content;
-            request.Headers.Add("Prefer", "return=representation");
+    var encodedTransactionId = Uri.EscapeDataString(transactionId);
+    var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
 
-            // ⭐ START FIX: Add the missing auth headers
-            request.Headers.Add("apikey", _apiKey);
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
-            // ⭐ END FIX
+    request.Content = content;
+    request.Headers.Add("Prefer", "return=representation");
 
-            var response = await _httpClient.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
+    // These headers are correct
+    request.Headers.Add("apikey", _apiKey);
+    request.Headers.Add("Authorization", $"Bearer {_apiKey}");
 
-            Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
+    var response = await _httpClient.SendAsync(request);
+    var json = await response.Content.ReadAsStringAsync();
 
-            // This will now return 'true' if the update succeeds
-            return response.IsSuccessStatusCode;
-        }
+    Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
+
+    // ⭐ FIX THE TYPO HERE
+    return response.IsSuccessStatusCode;
+}
 
 
         public async Task<List<Transaction>> GetPendingTransactions()
