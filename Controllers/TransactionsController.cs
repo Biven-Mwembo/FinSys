@@ -205,30 +205,28 @@ public async Task<IActionResult> GetAllTransactions()
         }
 
 
-        // ADMIN UPDATE: PUT: /api/transactions/{id}
-        [HttpPatch("item/{id}")]// ⭐ CHANGED FROM [HttpPut] TO [HttpPatch] ⭐
-[Authorize(Roles = "admin")] 
+       [HttpPatch("item/{id}")]
+[Authorize(Roles = "admin")]
 public async Task<IActionResult> UpdateTransaction(string id, [FromBody] TransactionUpdateRequest request)
 {
+    Console.WriteLine($"[UpdateTransaction] Received ID: {id}, Request: {JsonSerializer.Serialize(request)}");  // Add this
     if (!ModelState.IsValid) return BadRequest(ModelState);
 
     try
     {
         var updated = await _supabase.UpdateTransaction(id, request);
+        Console.WriteLine($"[UpdateTransaction] Update result: {updated}");  // Add this
 
         if (!updated)
         {
-            return NotFound(new { Message = $"Transaction with ID '{id}' not found. Verify it exists in the database." });
+            return NotFound(new { Message = $"Transaction with ID '{id}' not found or update failed." });
         }
 
-        return NoContent(); 
-    }
-    catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-    {
-        return NotFound(new { Message = $"Transaction ID '{id}' does not exist in Supabase." });
+        return NoContent();
     }
     catch (Exception ex)
     {
+        Console.WriteLine($"[UpdateTransaction] Exception: {ex.Message}");  // Add this
         return StatusCode(500, new { Message = "Update failed.", Details = ex.Message });
     }
 }
