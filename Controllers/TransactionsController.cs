@@ -236,78 +236,61 @@ public async Task<IActionResult> UpdateTransaction(string id, [FromBody] Transac
        
 
 
-        // ADMIN: Approve or Reject Pending Transactions
-        [HttpPut("item/{id}/approved")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> ApproveTransaction(string id)
+      [HttpPut("item/{id}/approved")]
+[Authorize(Roles = "admin")]
+public async Task<IActionResult> ApproveTransaction(string id)
+{
+    try
+    {
+        var transaction = await _supabase.GetTransactionById(id);
+        if (transaction == null)
+            return NotFound(new { Message = "Transaction not found." });
+
+        if (transaction.Status == "Approved")
+            return BadRequest(new { Message = "Transaction is already approved." });
+
+        // Attempt the update
+        bool updateSuccess = await _supabase.UpdateTransactionStatus(id, "Approved");
+        if (!updateSuccess)
         {
-            try
-            {
-                var transaction = await _supabase.GetTransactionById(id);
-                if (transaction == null)
-                    return NotFound(new { Message = "Transaction not found." });
-
-                if (transaction.Status == "Approved")
-                    return BadRequest(new { Message = "Transaction is already approved." });
-
-                // ⭐ FIX: Capture the boolean result from the service
-                var success = await _supabase.UpdateTransactionStatus(id, "Approved"); 
-
-                // ⭐ FIX: Check if the update was successful
-                if (!success)
-                {
-                    // This can happen if the ID doesn't exist or RLS prevents the update
-                    return NotFound(new { Message = "Failed to update transaction. Record not found or no changes were made." });
-                }
-
-                return Ok(new { Message = "Transaction approved successfully." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
-            }
+            return StatusCode(500, new { Message = "Failed to update transaction status in database. Check logs for details." });
         }
 
+        return Ok(new { Message = "Transaction approved successfully." });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to approve transaction.", Details = ex.Message });
+    }
+}
         
-      [HttpPut("item/{id}/declined")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> RejectTransaction(string id)
+     [HttpPut("item/{id}/declined")]
+[Authorize(Roles = "admin")]
+public async Task<IActionResult> RejectTransaction(string id)
+{
+    try
+    {
+        var transaction = await _supabase.GetTransactionById(id);
+        if (transaction == null)
+            return NotFound(new { Message = "Transaction not found." });
+
+        if (transaction.Status == "Declined")  // Assuming "Declined" is the reject status; adjust if using "Rejected"
+            return BadRequest(new { Message = "Transaction is already declined." });
+
+        // Attempt the update
+        bool updateSuccess = await _supabase.UpdateTransactionStatus(id, "Declined");  // Set to "Declined" or "Rejected"
+        if (!updateSuccess)
         {
-            try
-            {
-                var transaction = await _supabase.GetTransactionById(id);
-                if (transaction == null)
-                    return NotFound(new { Message = "Transaction not found." });
-
-                // ⭐ FIX 1: Check for the correct status
-                if (transaction.Status != "Pending")
-                {
-                    return BadRequest(new { Message = $"Transaction is already {transaction.Status} and cannot be declined." });
-                }
-
-                // ⭐ FIX 2: Call the service with "Declined" and capture the result
-                var success = await _supabase.UpdateTransactionStatus(id, "Declined");
-
-                // ⭐ FIX 3: Check if the update was successful
-                if (!success)
-                {
-                    return NotFound(new { Message = "Failed to update transaction. Record not found or no changes were made." });
-                }
-
-                // ⭐ FIX 4: Return the correct success message
-                return Ok(new { Message = "Transaction declined successfully." });
-            }
-            catch (Exception ex)
-            {
-                // ⭐ FIX 5: Return the correct error message
-                return StatusCode(500, new
-                {
-                    Message = "Failed to decline transaction.",
-                    Details = ex.Message
-                });
-            }
+            return StatusCode(500, new { Message = "Failed to update transaction status in database. Check logs for details." });
         }
 
+        return Ok(new { Message = "Transaction declined successfully." });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { Message = "Failed to decline transaction.", Details = ex.Message });
+    }
+}
 
         // ADMIN DELETE: DELETE: /api/transactions/{id}
         [HttpDelete("item/{id}")]
