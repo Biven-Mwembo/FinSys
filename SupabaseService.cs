@@ -118,40 +118,45 @@ namespace FinSys.Services
 
        // FinSys/Services/SupabaseService.cs
 
-public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
-{
-    var updateData = new Dictionary<string, object?>
-    {
-        ["status"] = newStatus,  // Ensure this matches your Supabase column name (lowercase "status")
-        ["updated_at"] = DateTime.UtcNow
-    };
+  public async Task<bool> UpdateTransactionStatus(string transactionId, string newStatus)
+  {
+      var updateData = new Dictionary<string, object?>
+      {
+          ["status"] = newStatus,  // Change to ["Status"] if your column is capitalized
+          ["created_at"] = DateTime.UtcNow  // Remove this line if the column doesn't exist
+      };
 
-    var jsonContent = JsonSerializer.Serialize(updateData);
-    var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+      var jsonContent = JsonSerializer.Serialize(updateData);
+      var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-    var encodedTransactionId = Uri.EscapeDataString(transactionId);
-    var request = new HttpRequestMessage(HttpMethod.Patch, $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}");
-    request.Content = content;
-    request.Headers.Add("Prefer", "return=representation");
+      var encodedTransactionId = Uri.EscapeDataString(transactionId);
+      var requestUrl = $"{_baseUrl}/transactions?id=eq.{encodedTransactionId}";
+      var request = new HttpRequestMessage(HttpMethod.Patch, requestUrl);
+      request.Content = content;
+      request.Headers.Add("Prefer", "return=representation");
 
-    var response = await _httpClient.SendAsync(request);
-    var json = await response.Content.ReadAsStringAsync();
+      // Add logging for the request
+      Console.WriteLine($"[UpdateTransactionStatus] Sending PATCH to: {requestUrl}");
+      Console.WriteLine($"[UpdateTransactionStatus] Payload: {jsonContent}");
 
-    Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
+      var response = await _httpClient.SendAsync(request);
+      var json = await response.Content.ReadAsStringAsync();
 
-    if (response.IsSuccessStatusCode)
-    {
-        // Check if the response body indicates no rows were updated (empty array)
-        if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
-        {
-            Console.WriteLine("[UpdateTransactionStatus] No rows updated - likely invalid ID or permissions.");
-            return false;  // Explicitly return false for no-op updates
-        }
-        return true;
-    }
-    return false;
-}
+      Console.WriteLine($"[UpdateTransactionStatus] Status: {response.StatusCode}, Body: {json}");
 
+      if (response.IsSuccessStatusCode)
+      {
+          if (json.Trim() == "[]" || string.IsNullOrWhiteSpace(json.Trim('[', ']', ' ', '\n', '\r')))
+          {
+              Console.WriteLine("[UpdateTransactionStatus] No rows updated - check column names, permissions, or ID.");
+              return false;
+          }
+          return true;
+      }
+      Console.WriteLine($"[UpdateTransactionStatus] Request failed with status {response.StatusCode}.");
+      return false;
+  }
+  
         public async Task<List<Transaction>> GetPendingTransactions()
 
         {
