@@ -35,7 +35,7 @@ namespace FinSys.Models
         public string? Address { get; set; }
 
         [JsonPropertyName("photo")]
-        public string? PhotoUrl { get; set; }
+          public string? Photo { get; set; } 
 
         [JsonPropertyName("password")]
         public string Password { get; set; } = string.Empty;
