@@ -108,7 +108,7 @@ namespace FinSys.Controllers
                 if (existingUser != null)
                     return Conflict(new { message = "An account with this email already exists." });
 
-                string? photoUrl = null;
+                string? Photo = null;
                 if (request.Photo != null)
                     photoUrl = await _supabase.SaveFile(request.Photo);
 
@@ -132,7 +132,7 @@ namespace FinSys.Controllers
                     Email = normalizedEmail,
                     Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address,
                     Password = request.Password ?? string.Empty,
-                    PhotoUrl = photoUrl,
+                    Photo = photoUrl,
                     Role = newUserRole
                 };
 
