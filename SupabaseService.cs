@@ -445,9 +445,24 @@ public async Task<bool> UpdateTransaction(string id, TransactionUpdateRequest re
         // In FinSys/Services/SupabaseService.cs
 
 // UPDATE USER (id is string)
+// In FinSys/Services/SupabaseService.cs
+
+// UPDATE USER (id is string) - Exclude password to preserve it
 public async Task<bool> UpdateUser(string id, User user)
 {
-    var jsonContent = JsonSerializer.Serialize(user);
+    // Create an update object excluding password (to preserve existing password)
+    var updateData = new
+    {
+        name = user.Name,
+        surname = user.Surname,
+        email = user.Email,
+        address = user.Address,
+        dob = user.Dob,
+        role = user.Role,
+        // Explicitly exclude password to avoid overwriting it
+    };
+
+    var jsonContent = JsonSerializer.Serialize(updateData);
     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
     var encodedId = Uri.EscapeDataString(id);
