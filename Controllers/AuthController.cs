@@ -37,7 +37,7 @@ namespace FinSys.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 // 🏆 CRITICAL FIX: user.Id is now a string (e.g., "USER001"), pass it directly.
-                new Claim("id", user.Id), 
+                new Claim("id", user.Id ?? string.Empty),  // Fixed: Added null check
                 new Claim("name", user.Name ?? ""),
                 new Claim(ClaimTypes.Role, user.Role ?? "user")
             };
@@ -108,7 +108,7 @@ namespace FinSys.Controllers
                 if (existingUser != null)
                     return Conflict(new { message = "An account with this email already exists." });
 
-                string? Photo = null;
+                string? photoUrl = null;
                 if (request.Photo != null)
                     photoUrl = await _supabase.SaveFile(request.Photo);
 
@@ -132,7 +132,7 @@ namespace FinSys.Controllers
                     Email = normalizedEmail,
                     Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address,
                     Password = request.Password ?? string.Empty,
-                    Photo = photoUrl,
+                    Photo = photoUrl,  // Fixed: Changed from PhotoUrl to Photo
                     Role = newUserRole
                 };
 
@@ -171,7 +171,11 @@ namespace FinSys.Controllers
         public async Task<IActionResult> GetProfile()
         {
             // The Claim value is now the string ID (e.g., "USER001")
-            var userId = User.FindFirstValue("id"); 
+            var userId = User.FindFirstValue("id");
+            if (string.IsNullOrEmpty(userId))  // Fixed: Added null check
+            {
+                return Unauthorized(new { Message = "Invalid user ID." });
+            }
             var user = await _supabase.GetUserById(userId);
             return Ok(user);
         }
