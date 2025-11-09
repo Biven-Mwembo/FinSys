@@ -33,19 +33,19 @@ namespace FinSys.Controllers
 
         // ✅ Admin-only: Get all users
         [HttpGet("all")]
-        [Authorize(Roles = "admin")] // Role name must match exactly how you issued it in JWT
-        public async Task<IActionResult> GetAll()
-        {
-            try
-            {
-                var users = await _supabase.GetUsers(); // Or GetAllUsers() if you have that
-                return Ok(users);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Failed to fetch users", details = ex.Message });
-            }
-        }
+[Authorize(Roles = "admin,financier,vice-president,pasteur")]  // ✅ UPDATED: Match TransactionsController roles
+public async Task<IActionResult> GetAll()
+{
+    try
+    {
+        var users = await _supabase.GetUsers(); // Or GetAllUsers() if you have that
+        return Ok(users);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "Failed to fetch users", details = ex.Message });
+    }
+}
 
         // ✅ Admin-only: Update a user (including role)
         [HttpPatch("{id}")]
